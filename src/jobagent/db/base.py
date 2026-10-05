@@ -69,6 +69,13 @@ class Repository(ABC):
     @abstractmethod
     def list_tasks(self, status: str | None = None, limit: int = 100) -> list[dict]: ...
 
+    # ---- verified profile (non-secret facts, requirements section 14)
+    @abstractmethod
+    def save_profile(self, data: dict, key: str = "default") -> None: ...
+
+    @abstractmethod
+    def get_profile(self, key: str = "default") -> dict | None: ...
+
     # ---- events / state / stats
     @abstractmethod
     def add_event(self, level: str, action: str, job_id: str | None = None, detail: dict | None = None) -> None: ...

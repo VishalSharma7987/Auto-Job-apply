@@ -32,6 +32,7 @@ create table if not exists tasks (
 create table if not exists events (
   id integer primary key autoincrement, ts text, level text, job_id text, action text, detail text);
 create table if not exists telegram_state (key text primary key, value text);
+create table if not exists profile (key text primary key, data text not null, updated_at text);
 create table if not exists daily_stats (
   day text primary key, scanned int default 0, qualified int default 0, selected int default 0,
   emails_sent int default 0, browser_submitted int default 0, waiting_user int default 0,
@@ -41,7 +42,7 @@ create index if not exists idx_applications_job_id on applications(job_id);
 create index if not exists idx_tasks_status on tasks(status);
 """
 
-_JSON_COLS = {"requirements_json", "match_json", "payload", "detail", "skip_reasons", "match_reasons"}
+_JSON_COLS = {"requirements_json", "match_json", "payload", "detail", "skip_reasons", "match_reasons", "data"}
 _JOB_COLS = ["job_key", "company", "title", "url", "source", "location", "remote", "description",
              "requirements_json", "posted_at", "status", "match_json", "match_reasons", "score", "skip_reason"]
 
@@ -137,8 +138,9 @@ class SqliteRepository(Repository):
         if row:
             return row
         cid = str(uuid.uuid4())
-        self._exec("insert into contacts (id, company, email, source_url, confidence, found_at) values (?,?,?,?,?,?)",
-                   (cid, company, email, source_url, confidence, utcnow().isoformat()))
+        now = utcnow().isoformat()
+        self._exec("insert into contacts (id, company, email, source_url, confidence, found_at, verified_at)"
+                   " values (?,?,?,?,?,?,?)", (cid, company, email, source_url, confidence, now, now))
         return self.get_contact(cid)  # type: ignore[return-value]
 
     def get_contact(self, contact_id: str) -> dict | None:
@@ -189,6 +191,15 @@ class SqliteRepository(Repository):
         if status:
             return self._all("select * from tasks where status=? order by created_at desc limit ?", (status, limit))
         return self._all("select * from tasks order by created_at desc limit ?", (limit,))
+
+    # ---- verified profile
+    def save_profile(self, data: dict, key: str = "default") -> None:
+        self._exec("insert into profile (key, data, updated_at) values (?,?,?) on conflict(key) do update set "
+                   "data=excluded.data, updated_at=excluded.updated_at", (key, _enc("data", data), utcnow().isoformat()))
+
+    def get_profile(self, key: str = "default") -> dict | None:
+        r = self._one("select data from profile where key=?", (key,))
+        return r["data"] if r else None
 
     # ---- events / state / stats
     def add_event(self, level: str, action: str, job_id: str | None = None, detail: dict | None = None) -> None:

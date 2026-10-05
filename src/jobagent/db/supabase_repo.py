@@ -67,7 +67,8 @@ class SupabaseRepository(Repository):
         if row:
             return row
         return self._first(self._t("contacts").insert(
-            {"company": company, "email": email, "source_url": source_url, "confidence": confidence}).execute())  # type: ignore[return-value]
+            {"company": company, "email": email, "source_url": source_url, "confidence": confidence,
+             "verified_at": utcnow().isoformat()}).execute())  # type: ignore[return-value]
 
     def get_contact(self, contact_id: str) -> dict | None:
         return self._first(self._t("contacts").select("*").eq("id", contact_id).limit(1).execute())
@@ -112,6 +113,15 @@ class SupabaseRepository(Repository):
         if status:
             q = q.eq("status", status)
         return q.order("created_at", desc=True).limit(limit).execute().data or []
+
+    # ---- verified profile
+    def save_profile(self, data: dict, key: str = "default") -> None:
+        self._t("profile").upsert({"key": key, "data": data, "updated_at": utcnow().isoformat()},
+                                  on_conflict="key").execute()
+
+    def get_profile(self, key: str = "default") -> dict | None:
+        row = self._first(self._t("profile").select("data").eq("key", key).limit(1).execute())
+        return row["data"] if row else None
 
     # ---- events / state / stats
     def add_event(self, level: str, action: str, job_id: str | None = None, detail: dict | None = None) -> None:
