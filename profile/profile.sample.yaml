@@ -1,0 +1,43 @@
+# SAMPLE / PLACEHOLDER data used ONLY by FAKE_MODE demos and automated tests. NOT the real candidate.
+# Never used for real runs. The real data lives in profile/profile.yaml.
+name: Vishal Sharma
+headline: "a fresher AI developer building RAG and agent applications (SAMPLE DATA)"
+experience_years: 0
+current_location: Pune, India
+target_roles: [AI Developer, AI Engineer, Full Stack Developer]
+preferred_locations: [Remote, Pune, Bangalore, Hyderabad]
+skills:
+  - python
+  - fastapi
+  - langchain
+  - langgraph
+  - rag
+  - llm
+  - openai
+  - agents
+  - mcp
+  - docker
+  - react
+  - node.js
+  - postgresql
+  - sql
+  - git
+  - vector database
+  - faiss
+  - hugging face
+  - prompt engineering
+projects:
+  - name: Sample RAG Chatbot
+    description: question answering over PDFs using retrieval and an LLM
+    tech: [python, langchain, faiss, fastapi]
+  - name: Sample Agent Workflow
+    description: multi-step agent that calls tools through MCP
+    tech: [python, langgraph, mcp]
+education: ["B.Tech (SAMPLE)"]
+experience: []
+legal_prefs:
+  work_authorization_india: true
+  needs_sponsorship: unknown
+  relocation: ask
+  salary: ask
+  accept_terms: false
