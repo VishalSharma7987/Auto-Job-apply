@@ -1,0 +1,95 @@
+name: agent
+
+on:
+  schedule:
+    # 09:00 and 18:00 IST. GitHub does not allow variables inside `on.schedule`, so edit these two lines to
+    # change the times (see docs/DECISIONS.md D-006).
+    - cron: "30 3 * * *"
+    - cron: "30 12 * * *"
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "jobs | apply | status | report | full"
+        required: false
+        default: "full"
+  repository_dispatch:
+    types: [jobs, apply, status, report, pause, resume, retry, approve, skip, history, settings, killswitch, telegram]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: agent
+  cancel-in-progress: false
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      DB_BACKEND: supabase
+      DRY_RUN: ${{ vars.DRY_RUN || 'true' }}
+      MAX_APPLICATIONS_PER_DAY: ${{ vars.MAX_APPLICATIONS_PER_DAY || '15' }}
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+      TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+      TELEGRAM_ALLOWED_CHAT_ID: ${{ secrets.TELEGRAM_ALLOWED_CHAT_ID }}
+      LLM_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+      LLM_BASE_URL: ${{ secrets.LLM_BASE_URL }}
+      LLM_MODEL: ${{ secrets.LLM_MODEL }}
+      GMAIL_ADDRESS: ${{ secrets.GMAIL_ADDRESS }}
+      GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+      CANDIDATE_PHONE: ${{ secrets.CANDIDATE_PHONE }}
+      LINKEDIN_URL: ${{ secrets.LINKEDIN_URL }}
+      # GitHub forbids secret names starting with GITHUB_, hence CANDIDATE_GITHUB_URL (docs/DECISIONS.md D-007)
+      CANDIDATE_GITHUB_URL: ${{ secrets.CANDIDATE_GITHUB_URL }}
+      PORTFOLIO_URL: ${{ secrets.PORTFOLIO_URL }}
+      RESUME_PDF_B64: ${{ secrets.RESUME_PDF_B64 }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: pyproject.toml
+
+      - name: Install dependencies
+        run: pip install -e .
+
+      - name: Cache Playwright browsers
+        id: pw-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('pyproject.toml') }}
+
+      - name: Install Chromium
+        run: |
+          if [ "${{ steps.pw-cache.outputs.cache-hit }}" = "true" ]; then
+            python -m playwright install-deps chromium
+          else
+            python -m playwright install --with-deps chromium
+          fi
+
+      - name: Write resume PDF from secret
+        run: |
+          mkdir -p profile/resume
+          if [ -n "$RESUME_PDF_B64" ]; then
+            printf '%s' "$RESUME_PDF_B64" | base64 -d > profile/resume/resume.pdf
+            echo "resume written ($(stat -c %s profile/resume/resume.pdf) bytes)"
+          else
+            echo "RESUME_PDF_B64 not set - email/apply sends will be refused until it is"
+          fi
+
+      - name: Run agent
+        run: python -m jobagent run --mode "${{ inputs.mode || github.event.action || 'full' }}"
+
+      - name: Upload artifacts (screenshots/html) on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: agent-artifacts
+          path: artifacts/
+          if-no-files-found: ignore
+          retention-days: 7
