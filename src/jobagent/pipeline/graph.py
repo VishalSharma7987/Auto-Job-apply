@@ -277,6 +277,12 @@ def build_graph(ctx: Ctx):
         if is_paused(repo):
             ctx.summary.notes.append("paused/killswitch: no actions taken")
             return {}
+        if not st.fake_mode and not ctx.resume.exists():
+            # no resume anywhere (Storage / env / local): discovery + matching + drafts still ran, but we must not
+            # email or apply without it. The worker already told you on Telegram to send the PDF.
+            ctx.summary.notes.append("no resume: email/apply steps skipped")
+            repo.add_event("warn", "no_resume_actions_skipped", None, None)
+            return {}
         for r in repo.list_jobs([S.READY], 500):
             if is_killed(repo):
                 break

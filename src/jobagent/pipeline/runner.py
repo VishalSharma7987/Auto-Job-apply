@@ -81,11 +81,11 @@ class Ctx:
 
 
 def build_ctx(settings: Settings, repo: Repository, tg: TelegramClient | None = None, llm: LLM | None = None,
-              mode: str = "full") -> Ctx:
+              mode: str = "full", profile: Profile | None = None) -> Ctx:
     if settings.fake_mode and not settings.dry_run:
         log.warning("FAKE_MODE forces DRY_RUN=true")
         settings = settings.model_copy(update={"dry_run": True})
-    profile = load_profile(settings)
+    profile = profile or load_profile(settings)
     tg = tg or TelegramClient(settings.telegram_bot_token, settings.telegram_allowed_chat_id)
     if settings.fake_mode:
         finder: object = FakeContactFinder()
