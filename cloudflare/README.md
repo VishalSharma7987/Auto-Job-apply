@@ -3,8 +3,9 @@
 Makes bot commands run within ~1 minute instead of waiting for the next cron. Without it the agent still
 works: commands are picked up from Telegram `getUpdates` at the start of every scheduled run.
 
-> Telegram's `getUpdates` is **disabled while a webhook is set**. That is why the relay forwards the full
-> Telegram update inside `client_payload.update`; the Python worker processes it from `GITHUB_EVENT_PATH`.
+> Telegram's `getUpdates` is **disabled while a webhook is set**. The relay therefore stores each update in the Supabase
+> `telegram_inbox` table (and also forwards it in `client_payload.update`); the Python worker drains the inbox in order.
+> It forwards commands, **PDF uploads** and plain-text replies (for `/setup`) from your chat only.
 > If you delete the webhook (`/deleteWebhook`) the cron path works again.
 
 ## 5-step deploy (dashboard, no CLI)
@@ -18,6 +19,9 @@ works: commands are picked up from Telegram `getUpdates` at the start of every s
    - `ALLOWED_CHAT_ID` – your Telegram chat id (same as `TELEGRAM_ALLOWED_CHAT_ID`)
    - `GITHUB_REPO` – `owner/repo`
    - `GITHUB_TOKEN` (secret) – the token from step 1
+   - `SUPABASE_URL` and `SUPABASE_SERVICE_KEY` (secret) – same values as the repo secrets `SUPABASE_URL` / `SUPABASE_KEY`.
+     The relay writes every message into the `telegram_inbox` table first, so a resume upload or an onboarding answer can never be lost
+     when GitHub merges queued runs. (Without them the relay still works but falls back to the dispatch payload only.)
 4. **Point Telegram at the Worker** (replace the placeholders; PowerShell or bash):
    ```
    curl "https://api.telegram.org/bot<BOT_TOKEN>/setWebhook" -d "url=https://<your-worker>.workers.dev" -d "secret_token=<TELEGRAM_WEBHOOK_SECRET>" -d "allowed_updates=[\"message\"]"

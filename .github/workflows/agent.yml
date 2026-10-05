@@ -13,7 +13,7 @@ on:
         required: false
         default: "full"
   repository_dispatch:
-    types: [jobs, apply, status, report, pause, resume, retry, approve, skip, history, settings, killswitch, telegram]
+    types: [jobs, apply, status, report, pause, resume, retry, approve, skip, history, settings, killswitch, setup, profile, myresume, telegram]
 
 permissions:
   contents: read
@@ -48,6 +48,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Resolve mode
+        id: mode
+        run: echo "mode=${{ inputs.mode || github.event.action || 'full' }}" >> "$GITHUB_OUTPUT"
+
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
@@ -57,7 +61,9 @@ jobs:
       - name: Install dependencies
         run: pip install -e .
 
+      # Chromium is only needed when a browser application can happen. Chat-only runs (onboarding replies, /profile, ...) skip it.
       - name: Cache Playwright browsers
+        if: contains(fromJSON('["full","apply","approve","retry"]'), steps.mode.outputs.mode)
         id: pw-cache
         uses: actions/cache@v4
         with:
@@ -65,6 +71,7 @@ jobs:
           key: playwright-${{ runner.os }}-${{ hashFiles('pyproject.toml') }}
 
       - name: Install Chromium
+        if: contains(fromJSON('["full","apply","approve","retry"]'), steps.mode.outputs.mode)
         run: |
           if [ "${{ steps.pw-cache.outputs.cache-hit }}" = "true" ]; then
             python -m playwright install-deps chromium
@@ -72,18 +79,20 @@ jobs:
             python -m playwright install --with-deps chromium
           fi
 
-      - name: Write resume PDF from secret
+      # OPTIONAL fallback only. Normally the resume is uploaded once via Telegram (stored in Supabase Storage) and
+      # downloaded by the worker at start. This step is used only if no resume was ever uploaded.
+      - name: Write resume PDF from secret (optional fallback)
         run: |
           mkdir -p profile/resume
           if [ -n "$RESUME_PDF_B64" ]; then
             printf '%s' "$RESUME_PDF_B64" | base64 -d > profile/resume/resume.pdf
-            echo "resume written ($(stat -c %s profile/resume/resume.pdf) bytes)"
+            echo "fallback resume written ($(stat -c %s profile/resume/resume.pdf) bytes)"
           else
-            echo "RESUME_PDF_B64 not set - email/apply sends will be refused until it is"
+            echo "RESUME_PDF_B64 not set (fine): the resume comes from Telegram upload / Supabase Storage"
           fi
 
       - name: Run agent
-        run: python -m jobagent run --mode "${{ inputs.mode || github.event.action || 'full' }}"
+        run: python -m jobagent run --mode "${{ steps.mode.outputs.mode }}"
 
       - name: Upload artifacts (screenshots/html) on failure
         if: failure()
