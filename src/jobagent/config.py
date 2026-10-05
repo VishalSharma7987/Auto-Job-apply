@@ -36,7 +36,7 @@ class Settings(BaseSettings):
     # llm (OpenAI-compatible)
     llm_base_url: str = "https://openrouter.ai/api/v1"
     llm_api_key: str | None = Field(default=None, validation_alias=AliasChoices("LLM_API_KEY", "OPENROUTER_API_KEY"))
-    llm_model: str = "meta-llama/llama-3.3-70b-instruct:free"
+    llm_model: str = "nvidia/nemotron-3-super-120b-a12b:free"
     llm_max_retries: int = 3
     llm_backoff_seconds: float = 2.0
 
@@ -47,7 +47,8 @@ class Settings(BaseSettings):
     # candidate (never committed)
     candidate_phone: str | None = None
     linkedin_url: str | None = None
-    github_url: str | None = None
+    github_url: str | None = Field(
+        default=None, validation_alias=AliasChoices("CANDIDATE_GITHUB_URL", "GITHUB_URL", "github_url"))
     portfolio_url: str | None = None
 
     # paths

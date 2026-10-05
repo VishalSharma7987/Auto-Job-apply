@@ -14,3 +14,4 @@ __pycache__/
 profile/resume/resume.pdf
 .claude/
 data/
+resume.b64.txt
