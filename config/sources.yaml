@@ -1,0 +1,14 @@
+# Enable/disable job sources. Override at runtime with env ENABLED_SOURCES="greenhouse,lever,remotive".
+sources:
+  greenhouse: { enabled: true }      # boards come from config/companies.yaml
+  lever: { enabled: true }
+  ashby: { enabled: true }
+  remotive:
+    enabled: true
+    params: { searches: ["ai engineer", "machine learning", "python developer"] }
+  remoteok: { enabled: true }        # attribution: keeps remoteok.com URLs; identifies itself via User-Agent
+  arbeitnow: { enabled: true }
+  jobicy:
+    enabled: true
+    params: { tags: ["python", "llm", "machine learning"] }
+  career_pages: { enabled: true }    # JSON-LD JobPosting on pages listed under career_pages in companies.yaml

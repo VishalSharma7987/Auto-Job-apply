@@ -1,0 +1,46 @@
+# Company boards to scan. Slugs below were verified against the live public APIs (they returned jobs).
+# Add/remove freely. `website` (optional) lets the contact finder check the company's own careers page.
+greenhouse:
+  - { slug: anthropic, name: Anthropic, website: "https://www.anthropic.com" }
+  - { slug: scaleai, name: Scale AI }
+  - { slug: databricks, name: Databricks }
+  - { slug: gleanwork, name: Glean }
+  - { slug: togetherai, name: Together AI }
+  - { slug: gitlab, name: GitLab }
+  - { slug: mongodb, name: MongoDB }
+  - { slug: elastic, name: Elastic }
+  - { slug: datadog, name: Datadog }
+  - { slug: vercel, name: Vercel }
+  - { slug: cloudflare, name: Cloudflare }
+  - { slug: figma, name: Figma }
+  - { slug: groww, name: Groww }
+  - { slug: airtable, name: Airtable }
+lever:
+  - { slug: meesho, name: Meesho }
+  - { slug: cred, name: CRED }
+  - { slug: paytm, name: Paytm }
+  - { slug: palantir, name: Palantir }
+  - { slug: zoox, name: Zoox }
+  - { slug: weride, name: WeRide }
+ashby:
+  - { slug: openai, name: OpenAI }
+  - { slug: cohere, name: Cohere }
+  - { slug: perplexity, name: Perplexity }
+  - { slug: replit, name: Replit }
+  - { slug: modal, name: Modal }
+  - { slug: supabase, name: Supabase }
+  - { slug: langchain, name: LangChain }
+  - { slug: llamaindex, name: LlamaIndex }
+  - { slug: pinecone, name: Pinecone }
+  - { slug: elevenlabs, name: ElevenLabs }
+  - { slug: decagon, name: Decagon }
+  - { slug: sierra, name: Sierra }
+  - { slug: baseten, name: Baseten }
+  - { slug: cursor, name: Cursor }
+  - { slug: deepgram, name: Deepgram }
+  - { slug: writer, name: Writer }
+  - { slug: posthog, name: PostHog }
+  - { slug: sentry, name: Sentry }
+# Generic pages exposing schema.org JobPosting JSON-LD (robots.txt respected). Example (disabled by default):
+career_pages: []
+#  - { name: Example Co, url: "https://example.com/careers", website: "https://example.com" }
