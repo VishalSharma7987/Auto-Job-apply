@@ -24,7 +24,8 @@ def upd(uid: int, text: str, chat: str = CHAT) -> dict:
 
 def test_all_required_commands_exist():
     assert set(COMMANDS) == {"start", "help", "jobs", "apply", "status", "report", "pause", "resume", "retry",
-                             "approve", "skip", "history", "settings", "killswitch"}
+                             "approve", "skip", "history", "settings", "killswitch",
+                             "setup", "profile", "myresume", "cancel"}
 
 
 def test_parse_command():
@@ -103,10 +104,12 @@ def test_only_allowed_chat_is_served(repo, settings, tg):
     assert modes == [] and len(tg.sent) == 1 and "Paused" in tg.sent[0]
 
 
-def test_update_ids_are_deduplicated(repo, settings, tg):
+def test_update_ids_are_deduplicated_but_late_arrivals_are_not_lost(repo, settings, tg):
     process_updates([upd(5, "/pause")], repo, tg, settings)
     process_updates([upd(5, "/pause"), upd(4, "/help")], repo, tg, settings)
-    assert len(tg.sent) == 1 and repo.get_state("last_update_id") == "5"
+    # update 5 is not handled twice; update 4 arrived late (out of order) and must still be handled
+    assert len([m for m in tg.sent if "Paused" in m]) == 1 and any("commands" in m for m in tg.sent)
+    assert repo.get_state("last_update_id") == "5" and repo.inbox_pending() == []
 
 
 def test_no_allowed_chat_configured_serves_nobody(repo, settings):

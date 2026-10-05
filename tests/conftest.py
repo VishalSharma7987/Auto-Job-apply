@@ -24,6 +24,8 @@ class FakeTelegram(TelegramClient):
         super().__init__("123456:TESTTOKEN_not_real_xxxxxxxxxxxxxxxxxxxx", chat_id)
         self.sent: list[str] = []
         self.photos: list[str] = []
+        self.files: dict[str, bytes] = {}  # file_id -> bytes served by get_file
+        self.documents: list[tuple[str, int]] = []  # (filename, size) sent back to the user
 
     def send_message(self, text: str) -> int:
         from jobagent.telegram.client import split_message
@@ -38,6 +40,15 @@ class FakeTelegram(TelegramClient):
 
     def get_updates(self, offset=None):
         return []
+
+    def get_file(self, file_id: str) -> bytes:
+        if file_id not in self.files:
+            raise RuntimeError("file not found")
+        return self.files[file_id]
+
+    def send_document(self, data: bytes, filename: str, caption: str = "") -> bool:
+        self.documents.append((filename, len(data)))
+        return True
 
 
 def load_fixture(name: str):
