@@ -1,0 +1,45 @@
+{
+ "jobs": [
+  {
+   "id": "d5573afa-636c-4219-832f-386f498243bf",
+   "title": "Customer Solution Architect (AMER)",
+   "department": "Success",
+   "team": "Success",
+   "employmentType": "FullTime",
+   "location": "Remote, AMER",
+   "secondaryLocations": [],
+   "publishedAt": "2024-11-14T17:58:07.662+00:00",
+   "isListed": true,
+   "isRemote": true,
+   "workplaceType": "Remote",
+   "address": {
+    "postalAddress": {}
+   },
+   "jobUrl": "https://jobs.ashbyhq.com/supabase/d5573afa-636c-4219-832f-386f498243bf",
+   "applyUrl": "https://jobs.ashbyhq.com/supabase/d5573afa-636c-4219-832f-386f498243bf/application",
+   "descriptionHtml": "<p style=\"min-height:1.5em\">Supabase is the Postgres development platform, built by developers for developers. We provide a complete backend solution including Database, Auth, Storage, Edge Functions, Realtime, and Vector Search. All services are deeply integrated and designed for growth. </p><p style=\"min-height:1.5em\">We’re seeking a Customer Solutions Architect (CSA) to help drive the adoption of Supabase across a diverse range of customers: from agile startups building towards their first launch to established brands with highly scaled workloads.</p><p style=\"min-height:1.5em\">At Supabase, CSA’s are responsible for the entire customer journey, working closely with our most valuable users to:</p><ol style=\"min-height:1.5em\"><li><p style=\"min-height:1.5em\">Uncover and understand business and technical requirements.</p></li><li><p style=\"min-height:1.5em\">Design and architect technical solutions built on the Supabase platform.</p></li><li><p style=\"min-height:1.5em\">Work with customers to lead proof-of-value implementations.</p></li><li><p style=\"min-height:1.5em\">Provide regular customer engagements to answer complex questions, unblock adoption, and optimize scaled performance.</p></li></ol><p style=\"min-height:1.5em\">Successful CSAs always put customers first, working closely with them to become trusted advisors who understand their needs, work as an extension of their team toward common success, and advocate on behalf of the customer within Supabase.</p><p style=\"min-heig",
+   "descriptionPlain": "Supabase is the Postgres development platform, built by developers for developers. We provide a complete backend solution including Database, Auth, Storage, Edge Functions, Realtime, and Vector Search. All services are deeply integrated and designed for growth. \n\nWe’re seeking a Customer Solutions Architect (CSA) to help drive the adoption of Supabase across a diverse range of customers: from agile startups building towards their first launch to established brands with highly scaled workloads.\n\nAt Supabase, CSA’s are responsible for the entire customer journey, working closely with our most valuable users to:\n\n 1. Uncover and understand business and technical requirements.\n\n 2. Design and architect technical solutions built on the Supabase platform.\n\n 3. Work with customers to lead proof-of-value implementations.\n\n 4. Provide regular customer engagements to answer complex questions, unblock adoption, and optimize scaled performance.\n\nSuccessful CSAs always put customers first, working closely with them to become trusted advisors who understand their needs, work as an extension of their team toward common success, and advocate on behalf of the customer within Supabase.\n\nYou'll be joining our team to support Supabase Team & Enterprise customers, where you will be expected to lead and innovate around the following areas of responsibility:\n\n\n\n\nDISCOVERY\n\n - Lead technical discovery to uncover business and technical objectives, set appropriate expectations of the Supabase platform"
+  },
+  {
+   "id": "c01f7436-1fdd-4a3e-8b96-8cadc33b006e",
+   "title": "Support Engineer (EMEA)",
+   "department": "Support",
+   "team": "Support",
+   "employmentType": "FullTime",
+   "location": "Remote, EMEA",
+   "secondaryLocations": [],
+   "publishedAt": "2025-05-30T20:36:32.528+00:00",
+   "isListed": true,
+   "isRemote": null,
+   "workplaceType": null,
+   "address": {
+    "postalAddress": {}
+   },
+   "jobUrl": "https://jobs.ashbyhq.com/supabase/c01f7436-1fdd-4a3e-8b96-8cadc33b006e",
+   "applyUrl": "https://jobs.ashbyhq.com/supabase/c01f7436-1fdd-4a3e-8b96-8cadc33b006e/application",
+   "descriptionHtml": "<p style=\"min-height:1.5em\">Supabase is the Postgres development platform, built by developers for developers. We provide a complete backend solution including Database, Auth, Storage, Edge Functions, Realtime, and Vector Search. All services are deeply integrated and designed for growth.</p><p style=\"min-height:1.5em\">We are seeking Support Engineers to provide world-class <strong>developer support</strong> for anyone experiencing issues or seeking guidance when using Supabase. The support team is globally distributed with a strong focus on minimizing time to fix, and works closely with the product engineering and growth teams.</p><p style=\"min-height:1.5em\"><strong>You will:</strong></p><ul style=\"min-height:1.5em\"><li><p style=\"min-height:1.5em\">Provide initial and timely responses to all support cases for a variety of topics, from billing or pre-sales requests to optimization or implementation questions.</p></li><li><p style=\"min-height:1.5em\">Triage support cases including directing users to previous answers, code examples, documentation, or escalating to specific technical or business team members.</p></li><li><p style=\"min-height:1.5em\">Monitor multiple feedback channels, e.g. Github Issues &amp; Discussions (check them here: <a target=\"_blank\" rel=\"noopener noreferrer nofollow\" href=\"https://github.com/supabase/supabase/issues\">https://github.com/supabase/supabase/issues</a>).</p></li><li><p style=\"min-height:1.5em\">Identify where internal tooling might be developed o",
+   "descriptionPlain": "Supabase is the Postgres development platform, built by developers for developers. We provide a complete backend solution including Database, Auth, Storage, Edge Functions, Realtime, and Vector Search. All services are deeply integrated and designed for growth.\n\nWe are seeking Support Engineers to provide world-class developer support for anyone experiencing issues or seeking guidance when using Supabase. The support team is globally distributed with a strong focus on minimizing time to fix, and works closely with the product engineering and growth teams.\n\nYou will:\n\n - Provide initial and timely responses to all support cases for a variety of topics, from billing or pre-sales requests to optimization or implementation questions.\n\n - Triage support cases including directing users to previous answers, code examples, documentation, or escalating to specific technical or business team members.\n\n - Monitor multiple feedback channels, e.g. Github Issues & Discussions (check them here: https://github.com/supabase/supabase/issues).\n\n - Identify where internal tooling might be developed or obtained to improve support efficiency.\n\n - Reproduce issues, create test cases and improve test coverage, if you have experience with testing.\n\nYou are:\n\n - Experienced in customer support, with 3+ years of experience providing developer support to technical customers.\n\n - Proficient in SQL (ideally PostgreSQL). You feel comfortable with complex SQL queries. If you have a database administration e"
+  }
+ ],
+ "apiVersion": "1"
+}

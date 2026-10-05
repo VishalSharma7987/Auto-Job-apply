@@ -1,0 +1,63 @@
+{
+ "apiVersion": "2.2.19",
+ "documentationUrl": "https://jobi.cy/apidocs",
+ "friendlyNotice": "Thanks for using Jobicy API! Please ensure Jobicy is clearly credited with a direct link to the source, and all application buttons redirect to the original job URL provided in this feed. That’s all! You might be building something amazing, we wish you the best of luck!",
+ "jobCount": 3,
+ "lastUpdate": "2026-10-05T08:23:32+00:00",
+ "nextCursor": "AgAAAABqw4p4AAAAAGrDNfwAAAAAAAJbsALdYReLMIlnNcHnEovfWMhi-qEnddl3ku86rH8wP7EOCCrUhvlaawz9VxcF8yplAR7MBqCbw3oP_VeNQGJuXyg",
+ "hasMore": true,
+ "appliedFilters": {
+  "count": 3,
+  "tag": "python"
+ },
+ "jobs": [
+  {
+   "id": 154567,
+   "url": "https://jobicy.com/jobs/154567-senior-software-engineer-internal-tooling",
+   "jobSlug": "154567-senior-software-engineer-internal-tooling",
+   "jobTitle": "Senior Software Engineer, Internal Tooling",
+   "companyName": "RevenueCat",
+   "companyLogo": "https://jobicy.com/data/server-nyc0409/galaxy/mercury/2021/09/e9b2999e3e7950f153097909d027dda2.jpg",
+   "jobIndustry": [
+    "DevOps & Infrastructure"
+   ],
+   "jobType": [
+    "Full-Time"
+   ],
+   "jobGeo": "APAC,  EMEA,  USA",
+   "jobLevel": "Senior",
+   "jobExcerpt": "RevenueCat gives app businesses the infrastructure and tools to build, run, and improve their monetization. Since graduating from YC's S18 batch, we've grown into the default monetization platform for mobile. We're in 50%+ of newly shipped subscription apps, we process $16B+ in annual purchase volume, and we help everyone from a solo developer to the&hellip;",
+   "jobDescription": "<p><a href=\"https://jobicy.com/company/revenuecat\" target=\"_blank\" rel=\"noopener\">RevenueCat</a> gives app businesses the infrastructure and tools to build, run, and improve their monetization. Since graduating from YC's S18 batch, we've grown into the default monetization platform for mobile. </p>\n<p>We're in 50%+ of newly shipped subscription apps, we process $16B+ in annual purchase volume, and we help everyone from a solo developer to the OpenAI mobile team understand and grow their revenue.</p>\n<p>We're a remote-first team of 150+ people across 25+ countries, guided by values we actually practice: Customer Obsession, Always Be Shipping, Own It, and Balance. </p>\n<p>This isn't the right fit for everyone. The systems you’ll build here manage billions of dollars and touch hundreds of millions of end users, and we don’t take that lightly. You'll be expected to work hard and hold a high bar for what you ship, alongside some of the sharpest, most driven people you've worked with. If that sounds energizing rather than exhausting, keep reading.</p>\n<h3>The role:</h3>\n<p>We are looking for a Senior, proactive Software Engineer to join our Devops/Devex engineering team and help building and scaling the internal development platform. You would be building the tools, services and automations that empower the rest of our engineering team to ship safely and fast.</p>\n<p>RevenueCat invests heavily in tooling. We already have custom services for CI/CD, automated one-push-per-commit rele",
+   "pubDate": "2026-10-05T08:23:32+00:00",
+   "salaryMin": 230000,
+   "salaryMax": 230000,
+   "salaryCurrency": "USD",
+   "salaryPeriod": "yearly"
+  },
+  {
+   "id": 154563,
+   "url": "https://jobicy.com/jobs/154563-senior-sdk-engineer",
+   "jobSlug": "154563-senior-sdk-engineer",
+   "jobTitle": "Senior SDK Engineer",
+   "companyName": "RevenueCat",
+   "companyLogo": "https://jobicy.com/data/server-nyc0409/galaxy/mercury/2021/09/e9b2999e3e7950f153097909d027dda2.jpg",
+   "jobIndustry": [
+    "Software Engineering"
+   ],
+   "jobType": [
+    "Full-Time"
+   ],
+   "jobGeo": "EMEA,  LATAM,  Canada,  USA",
+   "jobLevel": "Senior",
+   "jobExcerpt": "RevenueCat gives app businesses the infrastructure and tools to build, run, and improve their monetization. Since graduating from YC's S18 batch, we've grown into the default monetization platform for mobile. We're in 50%+ of newly shipped subscription apps, we process $16B+ in annual purchase volume, and we help everyone from a solo developer to the&hellip;",
+   "jobDescription": "<p><a href=\"https://jobicy.com/company/revenuecat\" target=\"_blank\" rel=\"noopener\">RevenueCat</a> gives app businesses the infrastructure and tools to build, run, and improve their monetization. Since graduating from YC's S18 batch, we've grown into the default monetization platform for mobile. </p>\r\n<p>We're in 50%+ of newly shipped subscription apps, we process $16B+ in annual purchase volume, and we help everyone from a solo developer to the OpenAI mobile team understand and grow their revenue.</p>\r\n<p>We're a remote-first team of 150+ people across 25+ countries, guided by values we actually practice: Customer Obsession, Always Be Shipping, Own It, and Balance. </p>\r\n<p>This isn't the right fit for everyone. The systems you’ll build here manage billions of dollars and touch hundreds of millions of end users, and we don’t take that lightly. You'll be expected to work hard and hold a high bar for what you ship, alongside some of the sharpest, most driven people you've worked with. If that sounds energizing rather than exhausting, keep reading.</p>\r\n<h3><strong>The Role</strong></h3>\r\n<p>We are looking for a Senior SDK Engineer to join our team to help design, build, ship, and support end-to-end features and products that will help developers make more money. We want to bring somebody onboard that is product focused, customer focused, and passionate about building mobile SDKs with a great developer experience.</p>\r\n<p>This role will primarily focus on either our iOS or Androi",
+   "pubDate": "2026-10-05T08:23:31+00:00",
+   "salaryMin": 230000,
+   "salaryMax": 230000,
+   "salaryCurrency": "USD",
+   "salaryPeriod": "yearly"
+  }
+ ],
+ "statusCode": 200,
+ "success": true
+}

@@ -1,0 +1,127 @@
+{
+ "jobs": [
+  {
+   "absolute_url": "https://job-boards.greenhouse.io/scaleai/jobs/4739727005",
+   "data_compliance": [
+    {
+     "type": "gdpr",
+     "requires_consent": false,
+     "requires_processing_consent": false,
+     "requires_retention_consent": false,
+     "retention_period": null,
+     "demographic_data_consent_applies": false
+    }
+   ],
+   "internal_job_id": 4457357005,
+   "location": {
+    "name": "San Francisco, CA; New York, NY"
+   },
+   "metadata": [
+    {
+     "id": 7904378005,
+     "name": "Domain",
+     "value": null,
+     "value_type": "multi_select"
+    },
+    {
+     "id": 9832886005,
+     "name": "External Department",
+     "value": "Marketing and Communications",
+     "value_type": "single_select"
+    }
+   ],
+   "id": 4739727005,
+   "updated_at": "2026-10-01T19:38:55-04:00",
+   "requisition_id": "GH-2378",
+   "title": "Account Based Marketing Lead",
+   "company_name": "Scale AI",
+   "first_published": "2026-10-01T19:38:55-04:00",
+   "language": "en",
+   "application_deadline": null,
+   "content": "&lt;p&gt;At Scale, we develop reliable AI systems for the world’s most important decisions. Scale’s growth marketing team is the engine behind the go-to-market motion, driving pipeline and revenue through an integrated mix of demand generation, ABM, and revenue operations. As our Account Based Marketing Lead, you will build and execute our 1:1 and industry-vertical ABM playbooks in close partnership with the Enterprise GTM team across a focused set of target accounts. Reporting to the Head of Growth Marketing, you will take ownership of vertical-specific campaigns across Healthcare, Financial &amp;amp; Professional Services, and Consumer and scale the 1:1 motion for our highest priority accounts.&lt;/p&gt;\n&lt;p&gt;&lt;strong&gt;You will:&lt;/strong&gt;&lt;/p&gt;\n&lt;ul&gt;\n&lt;li&gt;Build and execute 1:1 ABM programs for a focused set of strategic enterprise accounts (P0 &amp;amp; P1), owning strategy, channel mix, sequencing, and execution end-to-end.&lt;/li&gt;\n&lt;li&gt;Develop vertical-specific campaign strategies tailored to the buying behaviors, pain points, and use cases of target accounts in targeted industries.&lt;/li&gt;\n&lt;li&gt;Partner with enterprise sellers and the Head of Growth Marketing on joint account planning, aligning on target stakeholders, engagement goals, content needs, and campaign timing.&lt;/li&gt;\n&lt;li&gt;Orchestrate multichannel campaigns across digital advertising, direct mail, web and in-person experiences to engage the full buying committe",
+   "departments": [
+    {
+     "id": 4003438005,
+     "name": "Marketing",
+     "child_ids": [],
+     "parent_id": 4142691005
+    }
+   ],
+   "offices": [
+    {
+     "id": 4001480005,
+     "name": "San Francisco, CA",
+     "location": "San Francisco, California, United States",
+     "child_ids": [],
+     "parent_id": 4019441005
+    }
+   ],
+   "ai_disclaimer": null,
+   "include_ai_disclaimer": false,
+   "ai_opt_out_request_url": "http://app5.greenhouse.io/ai_opt_out_request/job_post/4739727005/ai_opt_out"
+  },
+  {
+   "absolute_url": "https://job-boards.greenhouse.io/scaleai/jobs/4715970005",
+   "data_compliance": [
+    {
+     "type": "gdpr",
+     "requires_consent": false,
+     "requires_processing_consent": false,
+     "requires_retention_consent": false,
+     "retention_period": null,
+     "demographic_data_consent_applies": false
+    }
+   ],
+   "internal_job_id": 4445392005,
+   "location": {
+    "name": "San Francisco, CA; New York, NY"
+   },
+   "metadata": [
+    {
+     "id": 7904378005,
+     "name": "Domain",
+     "value": null,
+     "value_type": "multi_select"
+    },
+    {
+     "id": 9832886005,
+     "name": "External Department",
+     "value": "Sales",
+     "value_type": "single_select"
+    }
+   ],
+   "id": 4715970005,
+   "updated_at": "2026-10-01T19:04:24-04:00",
+   "requisition_id": "GH-2253",
+   "title": "AI Advisory Consultant",
+   "company_name": "Scale AI",
+   "first_published": "2026-07-16T14:33:31-04:00",
+   "language": "en",
+   "application_deadline": null,
+   "content": "&lt;p&gt;Scale AI&#39;s Advisory practice is the most forward-leaning bet in our go-to-market motion. We&#39;re not waiting for clients to hand us a scope — we get in front of the decision, shape the right AI problems before a build begins, and make Scale the obvious partner for what comes next.&lt;/p&gt;\n&lt;p&gt;Advisory is the structured answer to the question enterprises are already asking us: &lt;em&gt;&quot;What should we build, and where do we start?&quot;&lt;/em&gt; It&#39;s a discovery and scoping phase that runs before delivery — designed to land bigger contracts, drive more predictable execution, and accelerate expansion. By 2027, it will be Scale&#39;s default first engagement with new enterprise clients.&lt;/p&gt;\n&lt;p&gt;As an AI Advisory Consultant, you sit at the center of every engagement — paired with a Principal, producing the research, synthesis, impact sizing, and workshop materials that shape the work, and pressure-testing the team&#39;s assumptions. You also run the engagement day-to-day — owning the timelines, trackers, and coordination across Solutions Engineering and Design, and acting as the single source of truth that keeps everything on track from kickoff to final readout. This is a delivery role; you own real parts of the advisory work and partner closely with the Principal to deliver the engagement. It&#39;s a direct path into the AI Advisory Principal track.&lt;/p&gt;\n&lt;h2&gt;What You&#39;ll Own&lt;/h2&gt;\n&lt;p&gt;You&#39;re at the center o",
+   "departments": [
+    {
+     "id": 4140830005,
+     "name": "Enterprise Sales",
+     "child_ids": [],
+     "parent_id": 4005958005
+    }
+   ],
+   "offices": [
+    {
+     "id": 4001480005,
+     "name": "San Francisco, CA",
+     "location": "San Francisco, California, United States",
+     "child_ids": [],
+     "parent_id": 4019441005
+    }
+   ],
+   "ai_disclaimer": null,
+   "include_ai_disclaimer": false,
+   "ai_opt_out_request_url": "http://app5.greenhouse.io/ai_opt_out_request/job_post/4715970005/ai_opt_out"
+  }
+ ],
+ "meta": {
+  "total": 192
+ }
+}

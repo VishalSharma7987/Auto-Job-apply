@@ -1,0 +1,53 @@
+{
+ "data": [
+  {
+   "slug": "pflichtpraktikant-kommunikationsdesign-ux-ui-design-munich-186909",
+   "company_name": "energized& Company GmbH",
+   "title": "Pflichtpraktikant Kommunikationsdesign & UX/UI-Design (m/w/d)",
+   "description": "<p><strong>energized&#x26; – Dein Growth Partner aus deiner Branche.</strong></p>\n<p>Wir sind eine tech- und datengetriebene Unternehmensberatung, die B2B-Unternehmen aus den Bereichen New Energy und E-Mobility unterstützt. Mit technischem Branchenwissen, modernen AI-Tools und In- &#x26; Outbound-Expertise helfen wir unseren Kunden, sich klar zu positionieren, Vertrieb und Marketing effizient aufzustellen und nachhaltig zu wachsen.</p>\n<p>Als <strong>Praktikant Kommunikationsdesign &#x26; UX/UI-Design (m/w/d)</strong> übernimmst du die strategische und visuelle Weiterentwicklung unseres Online-Auftritts. Du übersetzt komplexe Inhalte in präzise, moderne und überzeugende digitale Kommunikation – und trägst aktiv zur Marken- und Growth-Strategie von energized&#x26; bei.</p>\n<h2>Aufgaben</h2>\n<ul>\n<li>Analyse unserer Zielgruppen</li>\n<li>Enge Zusammenarbeit mit dem Gründerteam, um Key Messages, Value Proposition und Content-Logik zu schärfen</li>\n<li>Weiterentwicklung von Corporate Design, UI und UX auf Basis klarer strategischer Leitlinien</li>\n<li>Konzeptionelle Neugestaltung der gesamten Website-Struktur</li>\n<li>Visuelle und inhaltliche Weiterentwicklung des Corporate Designs und konsistente Anwendung der Marke auf allen digitalen Kanälen</li>\n<li>Aufbau einer klaren Service- und Navigationsstruktur, die unsere Positionierung als Commercial Growth Partner spiegelt</li>\n</ul>\n<h2>Qualifikation</h2>\n<ul>\n<li>Du studierst Kommunikationsdesign, Webdesign oder einen vergleichbare",
+   "remote": true,
+   "url": "https://www.arbeitnow.com/jobs/companies/energized-company-gmbh/pflichtpraktikant-kommunikationsdesign-ux-ui-design-munich-186909",
+   "tags": [
+    "Remote",
+    "IT"
+   ],
+   "job_types": [
+    "Internship"
+   ],
+   "location": "Munich",
+   "created_at": 1791194444
+  },
+  {
+   "slug": "finance-controlling-analyst-frankfurt-am-main-244541",
+   "company_name": "GENO Broker",
+   "title": "Finance & Controlling Analyst (m/w/d)",
+   "description": "<p>Wir entwickeln das Wertpapiergeschäft der Genossenschaftlichen FinanzGruppe weiter und schaffen ein neues digitales Neo-Brokerage-Angebot. Es richtet sich gezielt an junge, digital-affine Zielgruppen, die wir für unsere Finanzgruppe gewinnen wollen. Unser Ziel ist es, mit einem zukunftsweisenden Mobile-First-Angebot, bestehend aus einer leistungsstarken Brokerage-App, einem unverwechselbaren Marktauftritt mit erstklassigem Service und nahtlosem Zugang zu persönlicher Beratung unserer Primärbanken eine starke Antwort auf den sich wandelnden Brokerage-Markt zu geben. Dabei vereinen wir die Dynamik eines Start-ups mit der Stärke der Genossenschaftlichen FinanzGruppe.</p>\n<p>Bei uns hast Du die einzigartige Chance, ein innovatives Angebot von Anfang an aktiv mitzugestalten – von der Markenentwicklung über die User Experience bis zum Produktdesign. Flache Hierarchien und agilen Arbeitsweisen erlauben dir schnell Verantwortung zu übernehmen und echten Impact zu schaffen.</p>\n<h2>Aufgaben</h2>\n<p>_Als Finance &#x26; Controlling Analyst baust Du die finanzielle Steuerung mit auf und stellst sicher, dass Finanzdaten vollständig, belastbar und entscheidungsrelevant aufbereitet werden. Du verbindest saubere Finanzprozesse mit aussagekräftigem Controlling und schaffst damit die Grundlage für transparente Berichterstattung, regulatorische Sicherheit und eine zielgerichtete Unternehmenssteuerung._​</p>\n<ul>\n<li>Durchführung der ordnungsgemäßen, vollständigen und nachvollziehbaren Erfass",
+   "remote": false,
+   "url": "https://www.arbeitnow.com/jobs/companies/geno-broker/finance-controlling-analyst-frankfurt-am-main-244541",
+   "tags": [
+    "Controlling"
+   ],
+   "job_types": [
+    "berufserfahren"
+   ],
+   "location": "Frankfurt am Main",
+   "created_at": 1791194444
+  }
+ ],
+ "links": {
+  "first": "https://www.arbeitnow.com/api/job-board-api?page=1",
+  "last": null,
+  "prev": null,
+  "next": "https://www.arbeitnow.com/api/job-board-api?page=2"
+ },
+ "meta": {
+  "current_page": 1,
+  "current_page_url": "https://www.arbeitnow.com/api/job-board-api?page=1",
+  "from": 1,
+  "path": "https://www.arbeitnow.com/api/job-board-api",
+  "per_page": 325,
+  "to": 325,
+  "terms": "This is a free public API for jobs, please do not abuse. I would appreciate linking back to the site. By using the API, you agree to the terms of service present on Arbeitnow.com",
+  "info": "Jobs are updated every hour and order by the `created_at` timestamp. Use `?page=` to paginate. Read more information here: https://www.arbeitnow.com/blog/job-board-api"
+ }
+}
