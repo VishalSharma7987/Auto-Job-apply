@@ -233,6 +233,10 @@ def apply_to_job(job: dict, cover_letter: str, profile: Profile, settings: Setti
                 except PWError as e:
                     shot = _save_failure(page, settings, job["job_key"])
                     return ApplyOutcome(FAILED, f"browser error: {str(e)[:200]}", shot, application_url=url)
+                except Exception as e:  # noqa: BLE001 - unexpected website behaviour: save state, report, no crash
+                    shot = _save_failure(page, settings, job["job_key"])
+                    return ApplyOutcome(FAILED, f"unexpected error: {type(e).__name__}: {str(e)[:200]}", shot,
+                                        application_url=url)
                 finally:
                     ctx.close()
         finally:

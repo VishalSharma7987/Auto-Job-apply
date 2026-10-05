@@ -86,6 +86,11 @@ def run(settings: Settings, mode: str, job_id: str | None = None, tg: TelegramCl
     if not settings.fake_mode and not settings.llm_api_key and "ollama" not in settings.llm_base_url:
         log.warning("no LLM API key configured: AI steps will fail")
 
+    try:  # requirements section 14: the DB keeps the verified profile (non-secret facts only)
+        repo.save_profile(profile.prompt_view())
+    except Exception as e:  # noqa: BLE001 - never block a run on this
+        log.warning("could not store profile: %s", e)
+
     code = 0
     for m in modes:
         ctx = build_ctx(settings, repo, tg, llm, mode=m)

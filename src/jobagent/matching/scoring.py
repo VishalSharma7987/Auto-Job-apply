@@ -7,6 +7,7 @@ from jobagent.models import Job, MatchResult
 TARGET_TITLES = ["agentic", "ai developer", "ai engineer", "ml developer", "ml engineer", "full stack ai",
                  "full-stack ai", "generative", "llm", "full stack developer", "fullstack developer"]
 INDIA_HUBS = ["pune", "bangalore", "bengaluru", "hyderabad"]
+OFFICIAL_SOURCES = {"greenhouse", "lever", "ashby", "career_pages"}  # company-run boards: best source quality
 
 
 def score_job(job: Job, m: MatchResult) -> tuple[int, list[str]]:
@@ -28,6 +29,15 @@ def score_job(job: Job, m: MatchResult) -> tuple[int, list[str]]:
         pts.append((15, "target India hub"))
     elif job.remote:
         pts.append((12, "remote"))
+    pts.append((8 if job.source in OFFICIAL_SOURCES else 3, "official company board" if job.source in OFFICIAL_SOURCES
+                else "aggregator source"))
+    et = (m.employment_type or "unknown").lower()
+    if et == "full-time":
+        pts.append((4, "full-time"))
+    elif et in ("internship", "contract", "part-time"):
+        pts.append((-6, f"{et} role"))
+    if m.salary:
+        pts.append((2, "salary stated"))
     pts.append((round(10 * max(0.0, min(1.0, m.confidence))), "model confidence"))
     if job.posted_at is not None:
         pts.append((0, "dated posting"))

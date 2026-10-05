@@ -23,7 +23,7 @@ def term_variants(term: str) -> set[str]:
             out.add(t[: -len(suf)].strip())
     if t.endswith("s") and len(t) > 3:
         out.add(t[:-1])
-    parts = [x.strip() for x in re.split(r"[/,&]|and", t) if x.strip()]
+    parts = [x.strip() for x in re.split(r"[/,&]|\band\b", t) if x.strip()]
     if len(parts) > 1:
         for part in parts:
             out |= term_variants(part)
@@ -127,3 +127,20 @@ def load_profile(settings: Settings) -> Profile:
 
 def resume_path(settings: Settings) -> Path:
     return settings.abs_path(settings.resume_path)
+
+
+def resume_dir(settings: Settings) -> Path:
+    return resume_path(settings).parent
+
+
+def select_resume(settings: Settings, title: str) -> Path:
+    """Pick the resume variant for a role. Optional files next to the default resume:
+    resume_ai.pdf (AI/ML/agent roles) and resume_fullstack.pdf (full-stack roles); falls back to resume.pdf."""
+    base = resume_path(settings)
+    t = title.lower()
+    ai = re.search(r"\b(ai|ml|llm|machine learning|agentic|generative|genai|rag|nlp)\b", t) is not None
+    full = re.search(r"full[\s-]?stack", t) is not None
+    for want, name in ((ai, "resume_ai.pdf"), (full and not ai, "resume_fullstack.pdf")):
+        if want and (base.parent / name).exists():
+            return base.parent / name
+    return base

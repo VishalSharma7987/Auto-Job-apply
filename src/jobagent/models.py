@@ -85,6 +85,9 @@ class MatchResult(BaseModel):
     matched_skills: list[str] = Field(default_factory=list)
     missing_skills: list[str] = Field(default_factory=list)
     seniority: str = "unknown"
+    education_required: str | None = None
+    salary: str | None = None
+    employment_type: str | None = None  # full-time | part-time | contract | internship | unknown
     location_ok: bool = True
     reasons: list[str] = Field(default_factory=list)
     confidence: float = 0.5

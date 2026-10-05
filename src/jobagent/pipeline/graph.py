@@ -8,6 +8,7 @@ from the persisted job statuses on the next run.
 from __future__ import annotations
 
 import logging
+from datetime import timedelta
 from pathlib import Path
 
 import yaml
@@ -26,12 +27,15 @@ from jobagent.models import Job
 from jobagent.pipeline import state as S
 from jobagent.pipeline.runner import Ctx
 from jobagent.pipeline.state import PipelineState
+from jobagent.profile import resume_dir, select_resume
 from jobagent.telegram.commands import is_killed, is_paused
 from jobagent.telegram.reports import format_summary, todays_selected
-from jobagent.utils.dates import utcnow
+from jobagent.utils.dates import parse_dt, utcnow
+from jobagent.utils.hashing import normalize_text
 
 log = logging.getLogger(__name__)
 CONTACT_TRY_FACTOR = 3  # look at most 3x cap candidates per run for a route
+CONTACT_COOLDOWN_DAYS = 14  # one email per recruiting address per 14 days
 
 
 def row_to_job(row: dict, website: str | None = None) -> Job:
@@ -66,6 +70,21 @@ def build_graph(ctx: Ctx):
     websites = _company_websites(ctx)
     raw_websites: dict[str, str] = {}
 
+    def _history() -> tuple[set[tuple[str, str]], set[str]]:
+        """(company, role) pairs already contacted/applied, and contact ids emailed within the cool-down."""
+        applied: set[tuple[str, str]] = set()
+        recent: set[str] = set()
+        cutoff = utcnow() - timedelta(days=CONTACT_COOLDOWN_DAYS)
+        for a in repo.list_applications(2000):
+            sent = a.get("email_sent_at") or a.get("submitted_at")
+            if sent or a.get("status") in ("SENDING", "SENT", "SUBMITTED"):
+                applied.add((normalize_text(a.get("company") or ""), normalize_text(a.get("role") or "")))
+            if a.get("email_sent_at") and a.get("contact_id"):
+                when = parse_dt(a["email_sent_at"])
+                if when and when >= cutoff:
+                    recent.add(a["contact_id"])
+        return applied, recent
+
     # ------------------------------------------------------------------ discovery
     def discover(state: PipelineState) -> PipelineState:
         if is_paused(repo):
@@ -90,9 +109,14 @@ def build_graph(ctx: Ctx):
         return {"jobs": jobs}
 
     def dedupe_node(state: PipelineState) -> PipelineState:
-        jobs = dedupe(state.get("jobs", []))
-        repo.bump_stat(ctx.day, "scanned", len(jobs))
-        ctx.summary.scanned = len(jobs)
+        before = state.get("jobs", [])
+        jobs = dedupe(before)
+        dupes = len(before) - len(jobs)
+        repo.bump_stat(ctx.day, "scanned", len(before))
+        ctx.summary.scanned = len(before)
+        for _ in range(dupes):
+            _skip(ctx, "duplicate")
+        ctx.summary.skipped += dupes
         return {"jobs": jobs}
 
     def cheap_filter_node(state: PipelineState) -> PipelineState:
@@ -107,6 +131,9 @@ def build_graph(ctx: Ctx):
             row, created = repo.upsert_job(j)
             if created or row["status"] == S.DISCOVERED:
                 cand.append(row["id"])
+            else:  # seen in an earlier run and already processed: duplicate prevention
+                _skip(ctx, "duplicate")
+                ctx.summary.skipped += 1
         return {"candidates": cand}
 
     # ------------------------------------------------------------------ AI matching
@@ -144,11 +171,13 @@ def build_graph(ctx: Ctx):
                 repo.bump_stat(ctx.day, "qualified")
                 ctx.summary.qualified += 1
                 qualified.append(r["id"])
+                repo.add_event("info", "job_qualified", r["id"], {"score": score, "reasons": res.reasons[:5]})
             else:
                 reasons = res.reasons or ["ai_rejected"]
                 S.transition(repo, r["id"], S.REJECTED, skip_reason="ai_rejected", match_reasons=reasons)
                 _skip(ctx, "ai_rejected")
                 ctx.summary.skipped += 1
+                repo.add_event("info", "job_rejected", r["id"], {"reasons": reasons[:5]})
         return {"qualified": qualified}
 
     # ------------------------------------------------------------------ contact + route selection
@@ -160,11 +189,18 @@ def build_graph(ctx: Ctx):
         pool = [r for r in repo.list_jobs([S.QUALIFIED, S.CONTACT_FOUND], 1000) if repo.get_application(r["id"], "email") is None
                 and repo.get_application(r["id"], "browser") is None]
         pool.sort(key=lambda r: -(r.get("score") or 0))
+        applied_roles, recent_contacts = _history()
         selected: list[dict] = []
         tries = 0
         for r in pool:
             if len(selected) >= remaining or tries >= max(remaining, 1) * CONTACT_TRY_FACTOR:
                 break
+            if (normalize_text(r["company"]), normalize_text(r["title"])) in applied_roles:
+                # same company + role already contacted/applied (e.g. cross-posted under another URL)
+                S.transition(repo, r["id"], S.REJECTED, skip_reason="already_contacted")
+                _skip(ctx, "already_contacted")
+                ctx.summary.skipped += 1
+                continue
             tries += 1
             job = row_to_job(r, websites.get(r["company"]) or raw_websites.get(r["job_key"]))
             route, contact_id = None, None
@@ -175,22 +211,31 @@ def build_graph(ctx: Ctx):
                 c = None
             if c and c.confidence in ("HIGH", "MEDIUM"):
                 crow = repo.save_contact(c.company, c.email, c.source_url, c.confidence)
-                contact_id, route = crow["id"], "email"
-                if r["status"] == S.QUALIFIED:
-                    S.transition(repo, r["id"], S.CONTACT_FOUND)
-            elif st.enable_browser_apply:
+                repo.add_event("info", "contact_found", r["id"], {"email": c.email, "source_url": c.source_url,
+                                                                  "confidence": c.confidence})
+                if crow["id"] in recent_contacts:
+                    # never mail the same recruiting address twice within the cool-down window
+                    c = None
+                else:
+                    contact_id, route = crow["id"], "email"
+                    if r["status"] == S.QUALIFIED:
+                        S.transition(repo, r["id"], S.CONTACT_FOUND)
+            if route is None and st.enable_browser_apply:
                 from jobagent.apply.strategies import pick_strategy
 
                 if pick_strategy(job.url, st.enable_generic_apply):
                     route = "browser"
             if route is None:
+                # qualified, but no automatable route: counted as skipped ("no suitable application route") and
+                # parked as a manual_apply task so you can still apply by hand (/skip clears it)
                 S.transition(repo, r["id"], S.WAITING_USER, skip_reason="no_apply_route")
                 repo.create_task(r["id"], "manual_apply", {"reason": "no published recruiting email or supported form",
                                                            "url": r["url"]}, status="waiting_user")
-                repo.bump_stat(ctx.day, "waiting_user")
-                ctx.summary.waiting_user += 1
+                _skip(ctx, "no_apply_route")
+                ctx.summary.skipped += 1
                 continue
             selected.append({"id": r["id"], "route": route, "contact_id": contact_id})
+            applied_roles.add((normalize_text(r["company"]), normalize_text(r["title"])))
         return {"selected": selected}
 
     # ------------------------------------------------------------------ draft preparation
@@ -214,10 +259,12 @@ def build_graph(ctx: Ctx):
                     ctx.notify(f"⚠️ Free-tier limit reached: {q.provider} — {q.details[:300]}")
                 draft, how = template_email(job, ctx.profile, {}), "template(quota)"
             repo.update_application(app["id"], email_subject=draft.subject, email_body=draft.body,
-                                    contact_id=sel.get("contact_id"), resume_version=Path(str(ctx.resume)).name,
+                                    contact_id=sel.get("contact_id"), resume_version=select_resume(st, r["title"]).name,
                                     notes=f"draft:{how}")
             if r["status"] in (S.QUALIFIED, S.CONTACT_FOUND):
                 S.transition(repo, r["id"], S.READY)
+            repo.add_event("info", "draft_prepared", r["id"], {"route": sel["route"], "how": how,
+                                                              "resume": select_resume(st, r["title"]).name})
             if created:
                 repo.bump_stat(ctx.day, "selected")
                 ctx.summary.selected += 1
@@ -274,7 +321,7 @@ def build_graph(ctx: Ctx):
         task = _task_for(r["id"], "email")
         repo.update_application(app["id"], status="SENDING")  # at-most-once marker, written BEFORE sending
         try:
-            ctx.sender.send(contact["email"], app["email_subject"], app["email_body"], ctx.resume)
+            ctx.sender.send(contact["email"], app["email_subject"], app["email_body"], _resume_for(app))
         except SendBlocked as e:
             repo.update_application(app["id"], status="READY")
             _fail(r, task, str(e))
@@ -285,6 +332,8 @@ def build_graph(ctx: Ctx):
             return
         repo.update_application(app["id"], status="SENT", email_sent_at=utcnow().isoformat())
         S.transition(repo, r["id"], S.EMAIL_SENT)
+        repo.add_event("info", "email_sent", r["id"], {"to": contact["email"], "source_url": contact["source_url"],
+                                                       "subject": app.get("email_subject")})
         repo.update_task(task["id"], status="completed")
         repo.bump_stat(ctx.day, "emails_sent")
         ctx.summary.emails_sent += 1
@@ -307,7 +356,19 @@ def build_graph(ctx: Ctx):
             return  # already rehearsed; nothing new to learn
         task = _task_for(r["id"], "browser")
         S.transition(repo, r["id"], S.APPLICATION_STARTED)
-        out = ctx.apply_fn(r, app.get("email_body") or "", ctx.profile, st, ctx.llm, _approved_answers(r["id"]))
+        job_settings = st.model_copy(update={"resume_path": str(_resume_for(app))})
+        try:
+            out = ctx.apply_fn(r, app.get("email_body") or "", ctx.profile, job_settings, ctx.llm,
+                               _approved_answers(r["id"]))
+        except QuotaExceeded:
+            raise
+        except Exception as e:  # noqa: BLE001 - unexpected website behaviour: save state, report, never crash the run
+            log.exception("browser apply crashed")
+            repo.update_application(app["id"], notes=f"crashed: {type(e).__name__}: {str(e)[:300]}")
+            S.transition(repo, r["id"], S.FAILED)
+            _fail(r, task, f"unexpected error: {type(e).__name__}: {str(e)[:200]}", already_transitioned=True,
+                  notify=True)
+            return
         if out.status == "SUBMITTED":
             repo.update_application(app["id"], status="SUBMITTED", submitted_at=utcnow().isoformat(),
                                     application_url=out.application_url)
@@ -315,6 +376,7 @@ def build_graph(ctx: Ctx):
             repo.update_task(task["id"], status="completed")
             repo.bump_stat(ctx.day, "browser_submitted")
             ctx.summary.browser_submitted += 1
+            repo.add_event("info", "application_submitted", r["id"], {"url": out.application_url})
         elif out.status == "DRY_RUN_STOPPED":
             log.info("WOULD SUBMIT application for %s @ %s", r["title"], r["company"])
             repo.update_application(app["id"], notes="dry_run: " + out.reason, application_url=out.application_url)
@@ -325,7 +387,7 @@ def build_graph(ctx: Ctx):
         else:
             repo.update_application(app["id"], notes=f"failed: {out.reason}"[:500])
             S.transition(repo, r["id"], S.FAILED)
-            _fail(r, task, out.reason, already_transitioned=True)
+            _fail(r, task, out.reason, already_transitioned=True, notify=True, shot=out.screenshot)
 
     def _wait_user(r: dict, route: str, reason: str, shot: str | None, questions: list | None = None,
                    task: dict | None = None, url: str = "", app_note: str | None = None) -> None:
@@ -343,7 +405,13 @@ def build_graph(ctx: Ctx):
                    f"URL: {url or r['url']}\n\nContinue: /approve {tid}\nSkip: /skip {jid}")
         ctx.notify_photo(shot, f"{r['company']} – {r['title']}")
 
-    def _fail(r: dict, task: dict | None, err: str, already_transitioned: bool = False) -> None:
+    def _resume_for(app: dict) -> Path:
+        name = app.get("resume_version")
+        cand = resume_dir(st) / name if name else None
+        return cand if cand is not None and cand.exists() else ctx.resume
+
+    def _fail(r: dict, task: dict | None, err: str, already_transitioned: bool = False, notify: bool = False,
+              shot: str | None = None) -> None:
         if task is None:
             task = repo.create_task(r["id"], "email", None, status="running")
         repo.update_task(task["id"], status="failed", last_error=err[:500])
@@ -352,6 +420,12 @@ def build_graph(ctx: Ctx):
         repo.add_event("error", "action_failed", r["id"], {"error": err[:300]})
         repo.bump_stat(ctx.day, "failed")
         ctx.summary.failed += 1
+        if notify:
+            lines = ["⚠️ Application failed (will be in the retry queue)", f"Reason: {err[:300]}",
+                     f"Company: {r['company']}", f"Role: {r['title']}", f"URL: {r['url']}", "",
+                     f"Retry: /retry  Skip: /skip {str(r['id'])[:8]}"]
+            ctx.notify("\n".join(lines))
+            ctx.notify_photo(shot, f"{r['company']} – {r['title']}")
 
     # ------------------------------------------------------------------ record + report
     def record_node(state: PipelineState) -> PipelineState:

@@ -200,7 +200,14 @@ def _history(args, repo, settings) -> CommandResult:
 
 
 def _settings(args, repo, settings) -> CommandResult:
+    from jobagent.profile import load_profile
+
+    prof = load_profile(settings)
     view = settings.public_view()
+    view["TARGET_ROLES"] = ", ".join(prof.target_roles) or "-"
+    view["PREFERRED_LOCATIONS"] = ", ".join(prof.preferred_locations) or "-"
+    view["EXPERIENCE_TARGET"] = prof.experience_level or "-"
+    view["DAILY_TARGET"] = prof.daily_target or f"{settings.max_applications_per_day}/day cap"
     view["paused"] = is_paused(repo)
     view["killswitch"] = is_killed(repo)
     return CommandResult("⚙️ Settings\n" + "\n".join(f"{k}: {v}" for k, v in view.items()))

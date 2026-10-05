@@ -90,6 +90,13 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: agent-artifacts
-          path: artifacts/
+          # Screenshots of filled forms contain your name/phone/email. Artifacts of a PUBLIC repo are downloadable by
+          # anyone, so filled-form shots are excluded here (they are still sent to your private Telegram chat); failure.* is kept for debugging and
+          # retention is 1 day. Prefer a private repo (docs/SETUP.md).
+          path: |
+            artifacts/
+            !artifacts/**/pre_submit.png
+            !artifacts/**/submitted.png
+            !artifacts/**/unconfirmed.png
           if-no-files-found: ignore
-          retention-days: 7
+          retention-days: 1

@@ -19,7 +19,9 @@ Use ONLY the candidate profile JSON given in the user message to judge fit. Do n
 Return JSON with keys: decision ("QUALIFIED"|"REJECTED"), required_years_min (number|null),
 required_years_max (number|null), must_have_skills (string[]), nice_to_have (string[]),
 matched_skills (string[] - only skills present in the profile), missing_skills (string[]),
-seniority (string), location_ok (bool: remote OR Pune/Bangalore/Hyderabad/India), reasons (string[] short,
+seniority (string), education_required (string|null), salary (string|null, only if stated),
+employment_type ("full-time"|"part-time"|"contract"|"internship"|"unknown"),
+location_ok (bool: remote OR Pune/Bangalore/Hyderabad/India), reasons (string[] short,
 e.g. "RAG + LangChain + 0-2 yrs match"), confidence (0..1).
 QUALIFIED only if the role is junior/entry-level (about 0-2 years required), location is OK, and it is an
 AI/ML/agentic/full-stack developer type role with meaningful overlap with the profile."""

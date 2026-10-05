@@ -16,7 +16,7 @@ def test_full_dry_run_sends_nothing_and_stores_drafts(settings, repo, profile, t
     apply = CountingApply("DRY_RUN_STOPPED")
     ctx = make_ctx(settings, repo, profile, tg, apply_fn=apply)
     s = run_pipeline(ctx)
-    assert s.scanned == 19  # 20 fake jobs, one cross-posted duplicate
+    assert s.scanned == 20  # 20 fake jobs (one is a cross-posted duplicate, counted as skipped)
     assert s.qualified >= 5 and s.selected >= 1
     assert FakeSMTP.instances == [] and s.emails_sent == 0 and s.browser_submitted == 0
 
@@ -86,7 +86,7 @@ def test_quota_exceeded_is_reported_not_crashed(settings, repo, profile, tg):
     assert s.quota_limited and "openrouter.ai" in s.quota_detail
     assert any("⚠️ Free-tier limit reached: openrouter.ai" in m for m in tg.sent)
     assert repo.list_jobs([S.DISCOVERED]), "unmatched jobs stay DISCOVERED so a later run can finish them"
-    assert any("Free-tier limit reached" in m for m in tg.sent if "Daily Job Agent Report" in m)
+    assert any("Free-tier limit reached" in m for m in tg.sent if "Daily Job Report" in m)
 
 
 def test_paused_run_does_nothing(settings, repo, profile, tg):
@@ -107,8 +107,8 @@ def test_main_run_end_to_end_via_cli_function(settings, repo, tg, capsys, tmp_pa
     """python -m jobagent run --mode full (FAKE_MODE, sqlite, dry run) prints the daily report."""
     code = run(settings, "full", repo=repo, tg=tg)
     out = capsys.readouterr().out
-    assert code == 0 and "Daily Job Agent Report" in out and "[DRY RUN]" in out
-    assert "Jobs scanned: 19" in out and "Selected jobs (company | role | status | url):" in out
+    assert code == 0 and "Daily Job Report" in out and "DRY RUN" in out
+    assert "Jobs scanned: 20" in out and "Selected opportunities (company | role | status | application URL):" in out
 
 
 def test_main_processes_relay_payload_before_running(settings, repo, tg, tmp_path):

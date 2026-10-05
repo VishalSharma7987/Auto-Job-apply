@@ -17,6 +17,8 @@ OTP_RE = re.compile(r"(one[- ]time (code|password)|verification code|enter (the 
 LEGAL_RE = re.compile(r"(i (agree|accept|consent|certify|acknowledge|confirm|have read)|terms (of (use|service)|and conditions)|"
                       r"privacy (policy|notice)|consent to|background check|data processing|gdpr|"
                       r"i understand that)", re.I)
+IDENTITY_RE = re.compile(r"(verify your identity|identity verification|government[- ]issued id|photo id|"
+                         r"upload (a |your )?(selfie|photo of your id)|aadhaar|passport number|video interview required)", re.I)
 BLOCK_PAGE_RE = re.compile(r"(access denied|unusual traffic|verify you are (a )?human|are you a robot|"
                            r"checking your browser|attention required)", re.I)
 
@@ -63,6 +65,12 @@ def detect_login_wall(html: str, url: str = "") -> Detection | None:
     return None
 
 
+def detect_identity(html: str) -> Detection | None:
+    text = BeautifulSoup(html, "html.parser").get_text(" ")
+    m = IDENTITY_RE.search(text)
+    return Detection("identity", m.group(0)) if m else None
+
+
 def detect_blocked(html: str) -> Detection | None:
     text = BeautifulSoup(html, "html.parser").get_text(" ")[:3000]
     if BLOCK_PAGE_RE.search(text):
@@ -88,5 +96,5 @@ def detect_legal_checkboxes(html: str) -> list[Detection]:
 def detect_all(html: str, url: str = "") -> list[Detection]:
     """Hard blockers only (legal checkboxes are handled by the field mapper using legal_prefs)."""
     found = [d for d in (detect_blocked(html), detect_captcha(html), detect_otp(html),
-                         detect_login_wall(html, url)) if d]
+                         detect_identity(html), detect_login_wall(html, url)) if d]
     return found
