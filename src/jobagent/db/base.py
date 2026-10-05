@@ -76,6 +76,29 @@ class Repository(ABC):
     @abstractmethod
     def get_profile(self, key: str = "default") -> dict | None: ...
 
+    @abstractmethod
+    def get_profile_row(self, key: str = "default") -> dict | None:
+        """Whole profile row: personal details, resume pointers, onboarding_state (+ data)."""
+
+    @abstractmethod
+    def update_profile_fields(self, key: str = "default", **fields: Any) -> None:
+        """Create-or-merge columns on the profile row (never touches columns not passed)."""
+
+    # ---- durable Telegram inbox (updates are stored first, drained in update_id order, never lost)
+    @abstractmethod
+    def inbox_add(self, update_id: int, payload: dict) -> bool:
+        """Store an update. Returns False if update_id was already there."""
+
+    @abstractmethod
+    def inbox_pending(self, limit: int = 200) -> list[dict]:
+        """Unprocessed updates ordered by update_id: [{'update_id', 'payload'}]."""
+
+    @abstractmethod
+    def inbox_mark_done(self, update_id: int) -> None: ...
+
+    @abstractmethod
+    def inbox_prune(self, older_than_days: int = 14) -> None: ...
+
     # ---- events / state / stats
     @abstractmethod
     def add_event(self, level: str, action: str, job_id: str | None = None, detail: dict | None = None) -> None: ...

@@ -13,12 +13,13 @@ from datetime import UTC, datetime
 
 UNIQUE = {
     "jobs": ["job_key"], "contacts": ["company", "email"], "applications": ["job_id", "route"],
-    "daily_stats": ["day"], "telegram_state": ["key"], "profile": ["key"],
+    "daily_stats": ["day"], "telegram_state": ["key"], "profile": ["key"], "telegram_inbox": ["update_id"],
 }
 UUID_PK = {"jobs", "contacts", "applications", "tasks"}
-NOW_COLS = {"jobs": ["discovered_at"], "contacts": ["found_at", "verified_at"], "applications": ["created_at", "updated_at"],
+NOW_COLS = {"telegram_inbox": ["received_at"], "jobs": ["discovered_at"], "contacts": ["found_at", "verified_at"], "applications": ["created_at", "updated_at"],
             "tasks": ["created_at", "updated_at"], "events": ["ts"], "profile": ["updated_at"]}
 DEFAULTS = {
+    "profile": {"data": {}},
     "jobs": {"status": "DISCOVERED", "remote": False},
     "applications": {"status": "READY"},
     "tasks": {"status": "queued", "retry_count": 0},
@@ -40,10 +41,38 @@ class Resp:
         self.data, self.count = data, count
 
 
+class FakeBucket:
+    def __init__(self, files: dict):
+        self.files = files
+
+    def upload(self, path, file, file_options=None):
+        if path in self.files and (file_options or {}).get("upsert") != "true":
+            raise APIError("The resource already exists", "409")
+        self.files[path] = bytes(file)
+
+    def download(self, path):
+        if path not in self.files:
+            raise APIError("Object not found", "404")
+        return self.files[path]
+
+    def remove(self, paths):
+        for p in paths:
+            self.files.pop(p, None)
+
+
+class FakeStorage:
+    def __init__(self):
+        self.buckets: dict[str, dict] = {}
+
+    def from_(self, name):
+        return FakeBucket(self.buckets.setdefault(name, {}))
+
+
 class FakeClient:
     def __init__(self):
         self.tables: dict[str, list[dict]] = {}
         self._events_seq = 0
+        self.storage = FakeStorage()
 
     def table(self, name: str) -> Query:
         return Query(self, name)
@@ -97,6 +126,13 @@ class Query:
 
     def in_(self, col, vals):
         self._filters.append(lambda r: r.get(col) in vals)
+        return self
+
+    def is_(self, col, val):
+        if val == "null":
+            self._filters.append(lambda r: r.get(col) is None)
+        else:
+            self._filters.append(lambda r: r.get(col) == val)
         return self
 
     def order(self, col, desc=False):

@@ -123,6 +123,30 @@ class SupabaseRepository(Repository):
         row = self._first(self._t("profile").select("data").eq("key", key).limit(1).execute())
         return row["data"] if row else None
 
+    def get_profile_row(self, key: str = "default") -> dict | None:
+        return self._first(self._t("profile").select("*").eq("key", key).limit(1).execute())
+
+    def update_profile_fields(self, key: str = "default", **fields: Any) -> None:
+        row = {"key": key, **_clean(fields), "updated_at": utcnow().isoformat()}
+        self._t("profile").upsert(row, on_conflict="key").execute()  # merge: other columns are left untouched
+
+    # ---- inbox
+    def inbox_add(self, update_id: int, payload: dict) -> bool:
+        res = self._t("telegram_inbox").upsert({"update_id": int(update_id), "payload": payload},
+                                               on_conflict="update_id", ignore_duplicates=True).execute()
+        return bool(res.data)
+
+    def inbox_pending(self, limit: int = 200) -> list[dict]:
+        return (self._t("telegram_inbox").select("update_id,payload").is_("processed_at", "null")
+                .order("update_id").limit(limit).execute().data or [])
+
+    def inbox_mark_done(self, update_id: int) -> None:
+        self._t("telegram_inbox").update({"processed_at": utcnow().isoformat()}).eq("update_id", int(update_id)).execute()
+
+    def inbox_prune(self, older_than_days: int = 14) -> None:
+        cutoff = (utcnow() - timedelta(days=older_than_days)).isoformat()
+        self._t("telegram_inbox").delete().lt("processed_at", cutoff).execute()
+
     # ---- events / state / stats
     def add_event(self, level: str, action: str, job_id: str | None = None, detail: dict | None = None) -> None:
         self._t("events").insert({"level": level, "action": action, "job_id": job_id, "detail": detail}).execute()

@@ -32,7 +32,11 @@ create table if not exists tasks (
 create table if not exists events (
   id integer primary key autoincrement, ts text, level text, job_id text, action text, detail text);
 create table if not exists telegram_state (key text primary key, value text);
-create table if not exists profile (key text primary key, data text not null, updated_at text);
+create table if not exists profile (key text primary key, data text not null default '{}', updated_at text,
+  phone text, linkedin_url text, github_url text, portfolio_url text, location text, resume_path text,
+  resume_updated_at text, resume_variants text, onboarding_state text);
+create table if not exists telegram_inbox (update_id integer primary key, payload text not null, received_at text,
+  processed_at text);
 create table if not exists daily_stats (
   day text primary key, scanned int default 0, qualified int default 0, selected int default 0,
   emails_sent int default 0, browser_submitted int default 0, waiting_user int default 0,
@@ -42,7 +46,8 @@ create index if not exists idx_applications_job_id on applications(job_id);
 create index if not exists idx_tasks_status on tasks(status);
 """
 
-_JSON_COLS = {"requirements_json", "match_json", "payload", "detail", "skip_reasons", "match_reasons", "data"}
+_JSON_COLS = {"requirements_json", "match_json", "payload", "detail", "skip_reasons", "match_reasons", "data",
+              "resume_variants", "onboarding_state"}
 _JOB_COLS = ["job_key", "company", "title", "url", "source", "location", "remote", "description",
              "requirements_json", "posted_at", "status", "match_json", "match_reasons", "score", "skip_reason"]
 
@@ -80,6 +85,18 @@ class SqliteRepository(Repository):
         self._db.row_factory = sqlite3.Row
         self._lock = threading.RLock()
         self._db.executescript(_SCHEMA)
+        self._ensure_columns("profile", {"phone": "text", "linkedin_url": "text", "github_url": "text",
+                                         "portfolio_url": "text", "location": "text", "resume_path": "text",
+                                         "resume_updated_at": "text", "resume_variants": "text",
+                                         "onboarding_state": "text"})
+
+    def _ensure_columns(self, table: str, cols: dict[str, str]) -> None:
+        """Upgrade older local sqlite files that predate a column."""
+        have = {r["name"] for r in self._db.execute(f"pragma table_info({table})").fetchall()}
+        for name, typ in cols.items():
+            if name not in have:
+                self._db.execute(f"alter table {table} add column {name} {typ}")
+        self._db.commit()
 
     def _one(self, sql: str, args: tuple = ()) -> dict | None:
         with self._lock:
@@ -200,6 +217,37 @@ class SqliteRepository(Repository):
     def get_profile(self, key: str = "default") -> dict | None:
         r = self._one("select data from profile where key=?", (key,))
         return r["data"] if r else None
+
+    def get_profile_row(self, key: str = "default") -> dict | None:
+        return self._one("select * from profile where key=?", (key,))
+
+    def update_profile_fields(self, key: str = "default", **fields: Any) -> None:
+        self._exec("insert or ignore into profile (key, data, updated_at) values (?, '{}', ?)",
+                   (key, utcnow().isoformat()))
+        fields["updated_at"] = utcnow().isoformat()
+        self._update("profile", key, fields, key="key")
+
+    # ---- inbox
+    def inbox_add(self, update_id: int, payload: dict) -> bool:
+        with self._lock:
+            cur = self._db.execute("insert or ignore into telegram_inbox (update_id, payload, received_at) values (?,?,?)",
+                                   (int(update_id), json.dumps(payload, default=str), utcnow().isoformat()))
+            self._db.commit()
+            return cur.rowcount == 1
+
+    def inbox_pending(self, limit: int = 200) -> list[dict]:
+        rows = self._all("select update_id, payload from telegram_inbox where processed_at is null "
+                         "order by update_id asc limit ?", (limit,))
+        return rows
+
+    def inbox_mark_done(self, update_id: int) -> None:
+        self._exec("update telegram_inbox set processed_at=? where update_id=?", (utcnow().isoformat(), int(update_id)))
+
+    def inbox_prune(self, older_than_days: int = 14) -> None:
+        from datetime import timedelta
+
+        cutoff = (utcnow() - timedelta(days=older_than_days)).isoformat()
+        self._exec("delete from telegram_inbox where processed_at is not null and processed_at < ?", (cutoff,))
 
     # ---- events / state / stats
     def add_event(self, level: str, action: str, job_id: str | None = None, detail: dict | None = None) -> None:
