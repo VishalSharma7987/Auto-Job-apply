@@ -133,6 +133,10 @@ Audit of the code against `docs/REQUIREMENTS.md` (the real requirements doc). St
 | Useful Telegram report in the §18 format | 🔧 `reports.py` now matches §18 line for line · `test_report_format.py::test_report_matches_section_18_exactly` |
 | Within free-tier constraints | ✅ |
 
+## Extension after the audit: Telegram onboarding (resume + personal details)
+Supports §14 (profile in the DB), §19 (resume never public, no secrets in git) and §5 ("select the appropriate resume/profile version"). ✅ `onboarding.py`, `telegram/uploads.py`, `storage.py`, `runtime.py`,
+`db/migrations/003_onboarding.sql`, `cloudflare/worker.js` · tests: `test_onboarding.py` (62), live: `test_supabase_integration.py` (Storage, profile row, inbox). Design notes: D-027 to D-032.
+
 ## Not implemented on purpose
 - **§6/§7 Cloudflare D1 + Worker as control layer** → Supabase Postgres + a relay-only Worker (D-020).
 - **§9 Wellfound / Indeed / Internshala / Naukri / LinkedIn scraping** → these sites restrict automated access (ToS/robots/anti-bot), which the doc itself forbids bypassing. Official ATS APIs, public aggregators and a JSON-LD career-page adapter are used instead (D-022).

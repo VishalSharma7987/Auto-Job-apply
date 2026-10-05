@@ -3,7 +3,7 @@
 Time: ~30 minutes. Cost: $0. Do the steps in order; the agent stays in **DRY_RUN** until you flip it.
 
 ## 0. Review your profile
-`profile/profile.yaml` is already filled from section 2 of the requirements doc (skills, project areas, target roles, locations,
+`profile/profile.yaml` (skills / roles / project areas only) is already filled from section 2 of the requirements doc (skills, project areas, target roles, locations,
 experience *level*). The doc names no concrete projects/education/employers, so those lists are empty - add them (true facts only) if you want
 the agent to be able to mention them. Phone, email and links come from env/secrets, never from this file. `legal_prefs` controls what may be
 answered automatically on forms: `work_authorization_india: true` (auto "Yes" for "authorised to work in India"); `needs_sponsorship`,
@@ -31,18 +31,38 @@ To try real discovery locally without sending anything: copy `.env.example` → 
 ## 3. GitHub Actions secrets and variables
 Repo → Settings → Secrets and variables → Actions.
 
-**Secrets**
-`SUPABASE_URL`, `SUPABASE_KEY`, `TELEGRAM_BOT_TOKEN`, `TELEGRAM_ALLOWED_CHAT_ID`, `OPENROUTER_API_KEY`, `LLM_BASE_URL`
-(`https://openrouter.ai/api/v1`), `LLM_MODEL` (e.g. `nvidia/nemotron-3-super-120b-a12b:free`), `GMAIL_ADDRESS`,
-`GMAIL_APP_PASSWORD`, `RESUME_PDF_B64`, `CANDIDATE_PHONE`, `LINKEDIN_URL`, `CANDIDATE_GITHUB_URL` *(not `GITHUB_URL`: GitHub forbids that prefix)*,
-`PORTFOLIO_URL`.
+**Required secrets (9)**
+| Secret | What |
+|---|---|
+| `SUPABASE_URL` | project URL |
+| `SUPABASE_KEY` | service-role / secret key (also used for the private resume bucket) |
+| `TELEGRAM_BOT_TOKEN` | from @BotFather |
+| `TELEGRAM_ALLOWED_CHAT_ID` | your numeric chat id - the only chat that may upload a resume, run `/setup` or give commands |
+| `OPENROUTER_API_KEY` | (or name it `LLM_API_KEY`) |
+| `LLM_BASE_URL` | `https://openrouter.ai/api/v1` |
+| `LLM_MODEL` | e.g. `nvidia/nemotron-3-super-120b-a12b:free` |
+| `GMAIL_ADDRESS` | sending account |
+| `GMAIL_APP_PASSWORD` | 16-character Gmail app password |
+
+**Optional secrets** - not needed any more, only fallbacks when the database has no value (DB first, env second):
+`CANDIDATE_GITHUB_URL` *(not `GITHUB_URL`: GitHub forbids that prefix)*, `CANDIDATE_PHONE`, `LINKEDIN_URL`, `PORTFOLIO_URL`, `RESUME_PDF_B64`.
 
 **Variables:** `DRY_RUN` (`true` until you are happy), `MAX_APPLICATIONS_PER_DAY` (`15`).
 
-**Resume secret** (PDF should be ≲ 35 KB; GitHub secrets are limited to 48 KB):
-```powershell
-.\scripts\encode_resume.ps1 -Path C:\path\resume.pdf     # copies base64 to the clipboard
-```
+## 3a. Your resume and personal details: do it in Telegram (no base64, no .env editing)
+The bot stores everything in Supabase (private Storage bucket `resumes` + the `profile` table); the worker loads it at every run, so it works with the laptop off.
+Send these messages **to your bot** (from the chat that is `TELEGRAM_ALLOWED_CHAT_ID`):
+1. **Attach your resume PDF** (≤ 5 MB) → `✅ Resume saved (NN KB). Send /setup to update your details.`
+   Optional variants: attach another PDF with the caption `ai` or `fullstack` (used for AI-flavoured / pure full-stack roles).
+2. `/setup` → answer one question at a time: phone (`+919876543210`, a 10-digit Indian number is accepted too) → LinkedIn URL → GitHub URL (prefilled from env if set;
+   `keep` accepts the shown value) → portfolio URL → city. `skip` is allowed for LinkedIn / GitHub / portfolio. Then `yes` to save, `no` to redo, `cancel` any time.
+3. `/profile` shows what is saved (and which values still come from env); `/myresume` sends the stored PDF back (`/myresume ai` for a variant).
+
+*Timing:* every message is processed by the next worker run. **With the Cloudflare relay (section 5) that is ~1 minute**; with cron only it is the next scheduled run (answers sent in a row are
+still applied in order, but you won't see the next question until then). Nothing is ever lost: messages are queued in the `telegram_inbox` table.
+
+If no resume is stored anywhere (Storage → `RESUME_PDF_B64` → local file) the worker tells you **"⚠️ No resume configured. Send me your PDF."**, still does discovery, matching and drafting, but sends/applies nothing.
+Missing phone/LinkedIn values simply make forms that need them wait for you (`WAITING_USER`).
 
 ## 3b. Push to GitHub and set the repository Variables (manual - `gh` CLI is not installed here)
 ```powershell
@@ -66,8 +86,8 @@ Actions → **agent** → *Run workflow* → mode `full`. You get the daily repo
 Review the drafted emails (DB table `applications`: `email_subject`, `email_body`) and the dry-run screenshots (failed/waiting runs upload
 `artifacts/`). Set variable `DRY_RUN=false` only when satisfied.
 
-## 5. Optional: instant commands (Cloudflare relay)
-Follow `cloudflare/README.md` (5 steps). Without it commands run at the next cron (09:00 / 18:00 IST) or when you press *Run workflow*.
+## 5. Optional but recommended: instant replies (Cloudflare relay)
+Follow `cloudflare/README.md` (5 steps). It also needs `SUPABASE_URL` / `SUPABASE_SERVICE_KEY` in the Worker so uploads and onboarding answers are queued safely. Without it, commands/uploads are handled at the next cron (09:00 / 18:00 IST) or when you press *Run workflow*.
 
 ## 6. Daily use
 | Command | Effect |
@@ -78,6 +98,7 @@ Follow `cloudflare/README.md` (5 steps). Without it commands run at the next cro
 | `/pause` `/resume` `/killswitch` | stop/continue; killswitch = hard stop until `/resume` |
 | `/approve <task_id>` `/skip <job_id>` | answer a `WAITING_USER` notification (ids may be the short 8-char prefix) |
 | `/retry` | re-queue failed tasks (never re-sends an already-sent email) |
+| *(send a PDF)* `/setup` `/profile` `/myresume` `/cancel` | onboarding - see 3a (`/resume` still means "resume automation", the PDF command is `/myresume`) |
 
 ## Troubleshooting
 - *"profile.yaml has no skills"* → step 0.
@@ -87,11 +108,11 @@ Follow `cloudflare/README.md` (5 steps). Without it commands run at the next cro
 - Supabase paused → open the project dashboard and restore it.
 
 ## Manual test order (do these in order; stop at the first problem)
-1. **Local, fake** - `.\scriptsun_local.ps1 -Setup -Fake` -> prints "Daily Job Report", writes drafts to `data/jobagent.sqlite`, sends nothing. Then `pytest -q`.
-2. **Local, real data, dry run** - fill `.env` (at least `LLM_API_KEY`, optional Telegram), `DRY_RUN=true`, `DB_BACKEND=sqlite`, `FAKE_MODE=false`, put your resume at
-   `profile/resume/resume.pdf`, run `.\scriptsun_local.ps1`. Read the drafted emails/reasons (`sqlite` DB or the report), check `/status`-style output, look at screenshots in `artifacts/`.
-   Optional DB check: `$env:SUPABASE_URL=...; $env:SUPABASE_KEY=...; pytest tests/test_supabase_integration.py -v`.
-3. **GitHub Actions, dry run** - add the Secrets (step 3), Variables `DRY_RUN=true`, run *agent -> Run workflow -> full*. Confirm the Telegram report and rows in Supabase.
-4. **Telegram command** - send `/status`, `/jobs`, `/pause`, `/resume`, `/settings` (cron path: answered at the next run or when you press *Run workflow*). Optional relay: `cloudflare/README.md`
-   (then commands answer within ~1 minute).
-5. **Go live** - set `DRY_RUN=false`, start with `MAX_APPLICATIONS_PER_DAY=3` for a day or two, watch Telegram, then raise to 10-15. `/killswitch` stops everything instantly.
+1. **Local, fake** - `.\scripts\run_local.ps1 -Setup -Fake` -> prints "Daily Job Report", writes drafts to `data/jobagent.sqlite`, sends nothing. Then `pytest -q`.
+2. **Telegram onboarding** - with your real `.env` (Supabase + Telegram keys): send the bot your resume PDF and `/setup` answers, then run
+   `python -m jobagent run --mode telegram` (processes the queued messages and replies). Check `/profile` and `/myresume`.
+   Optional DB/Storage check: `pytest tests/test_supabase_integration.py -v` (env loaded).
+3. **Local, real data, dry run** - `DRY_RUN=true`, `FAKE_MODE=false`, `DB_BACKEND=supabase`, then `.\scripts\run_local.ps1`. The worker pulls the resume + details from Supabase. Read the drafts and reasons.
+4. **GitHub Actions, dry run** - add the 9 secrets + Variables `DRY_RUN=true`, run *agent -> Run workflow -> full*. Confirm the Telegram report and rows in Supabase.
+5. **Telegram command** - send `/status`, `/jobs`, `/pause`, `/resume`, `/settings` (cron path: answered at the next run; with the relay: ~1 minute).
+6. **Go live** - set `DRY_RUN=false`, start with `MAX_APPLICATIONS_PER_DAY=3` for a day or two, watch Telegram, then raise to 10-15. `/killswitch` stops everything instantly.

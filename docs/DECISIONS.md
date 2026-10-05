@@ -99,3 +99,25 @@ contract (`tests/test_repository_contract.py`); the identical contract runs agai
 
 **D-026 - Git remote.** At one point the working tree's `origin` pointed at `.../ai-job-agent.git` (not found); it now points at the repository named in the rules,
 `https://github.com/VishalSharma7987/Auto-Job-apply.git`, and pushes to `main` work. `gh` is not installed, so repository Variables and the CI check are manual (SETUP.md 3b).
+
+**D-027 - `/resume` vs the PDF command.** The requirements doc (section 17) defines `/resume` as "resume automation", and the kill-switch flow depends on it. The onboarding brief also wanted
+`/resume` to send back the stored PDF. The doc is authoritative, so `/resume` keeps resuming automation and the PDF command is **`/myresume`** (`/myresume ai|fullstack` for variants).
+
+**D-028 - Durable Telegram inbox.** GitHub Actions merges/cancels queued runs of one concurrency group, so a message that only rides in a `repository_dispatch` payload can vanish - fatal for a PDF upload or an
+onboarding answer. Every update (relay, dispatch payload, `getUpdates`) is therefore written to `telegram_inbox` first (idempotent by `update_id`) and the worker drains it in `update_id` order, marking each row done only
+after it was handled. A message that arrives late or out of order is still processed; processed rows are pruned after 14 days. The Cloudflare Worker writes to the inbox directly (needs `SUPABASE_URL` + `SUPABASE_SERVICE_KEY` in the Worker);
+without them the dispatch payload is the fallback and the worker inserts it into the inbox itself.
+
+**D-029 - Where personal data lives.** `profile.yaml` keeps skills/roles/project areas only. Phone, LinkedIn, GitHub, portfolio, location, resume pointers and the onboarding state are columns of the `profile` row
+(migration 003); resumes are objects `default.pdf`, `ai.pdf`, `fullstack.pdf` in the **private** bucket `resumes` (5 MB limit, PDF only, service key only - an anonymous request returns "Bucket not found").
+Lookup order at every run: **DB -> env -> missing**. The non-secret facts sync (`profile.data`) never contains phone/email, and an update to it never overwrites the personal columns (merge-upsert, tested).
+
+**D-030 - Resume resolution and the no-resume rule.** Storage -> `RESUME_PDF_B64` (must decode to a PDF) -> an existing local file -> missing. When missing (outside FAKE_MODE) the worker sends
+"⚠️ No resume configured. Send me your PDF.", still runs discovery/matching/drafting, and the act step sends/applies nothing. A stored pointer whose object is gone falls through to the next source.
+
+**D-031 - Onboarding details.** `/setup` is a pure state machine persisted in `profile.onboarding_state` after every message (no in-memory state, so any worker run can continue it). Phone is normalised to `+<digits>`
+(a 10-digit Indian mobile number gets `+91`); LinkedIn must be a `linkedin.com/in/...` profile, GitHub a single-segment `github.com/<user>` URL; LinkedIn/GitHub/portfolio may be `skip`ped (phone and city are required);
+`keep` accepts the value currently stored/prefilled from env. Uploads: PDF only (mime or `.pdf`, header `%PDF` verified), <= 5 MB checked both from Telegram's declared size and the real bytes; captions `ai` / `fullstack`
+select a variant, any other caption is rejected instead of silently overwriting the main resume. Contents and phone numbers are never logged (the phone is also registered with the log redactor).
+
+**D-032 - Cheaper chat-only runs.** The workflow installs Chromium only for modes that can open a browser (`full`, `apply`, `approve`, `retry`); onboarding replies, `/profile`, `/myresume`, etc. skip it.
