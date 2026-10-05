@@ -54,6 +54,7 @@ class Settings(BaseSettings):
     # paths
     profile_path: str = "profile/profile.yaml"
     resume_path: str = "profile/resume/resume.pdf"
+    resume_pdf_b64: str | None = None  # optional fallback; normally the resume is uploaded via Telegram
     artifacts_dir: str = "artifacts"
     companies_path: str = "config/companies.yaml"
     sources_path: str = "config/sources.yaml"

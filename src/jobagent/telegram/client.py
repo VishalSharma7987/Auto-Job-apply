@@ -79,6 +79,21 @@ class TelegramClient:
             self._call("sendPhoto", data={"chat_id": self.chat_id, "caption": caption[:1000]}, files={"photo": f})
         return True
 
+    def send_document(self, data: bytes, filename: str, caption: str = "") -> bool:
+        if not self.enabled:
+            return False
+        self._call("sendDocument", data={"chat_id": self.chat_id, "caption": caption[:1000]},
+                   files={"document": (filename, data, "application/pdf")})
+        return True
+
+    def get_file(self, file_id: str) -> bytes:
+        """Download a file the user sent (Bot API limit: 20 MB; we enforce 5 MB before calling this)."""
+        info = self._call("getFile", json={"file_id": file_id})
+        path = info["result"]["file_path"]
+        r = self._c.get(f"https://api.telegram.org/file/bot{self.token}/{path}")
+        r.raise_for_status()
+        return r.content
+
     def get_updates(self, offset: int | None = None) -> list[dict]:
         """Pending updates. Returns [] if a webhook is active (getUpdates then returns HTTP 409)."""
         if not self.token:
