@@ -97,5 +97,5 @@ pure full-stack titles the second, everything else the default. Only the default
 contract (`tests/test_repository_contract.py`); the identical contract runs against the real project with `tests/test_supabase_integration.py` when
 `SUPABASE_URL`/`SUPABASE_KEY` are set (opt-in, cleans up after itself).
 
-**D-026 - Git remote.** The remote in the working tree was re-pointed at `.../ai-job-agent.git` (not found / no access); the repository named in the rules is
-`.../Auto-Job-apply.git`, which already contains the earlier commits. Pushing there was blocked by the harness, so pushes are left to you (SETUP.md has the exact commands).
+**D-026 - Git remote.** At one point the working tree's `origin` pointed at `.../ai-job-agent.git` (not found); it now points at the repository named in the rules,
+`https://github.com/VishalSharma7987/Auto-Job-apply.git`, and pushes to `main` work. `gh` is not installed, so repository Variables and the CI check are manual (SETUP.md 3b).
