@@ -121,7 +121,9 @@ def test_main_processes_relay_payload_before_running(settings, repo, tg, tmp_pat
     assert repo.list_jobs() == [] and any("paused" in m.lower() for m in tg.sent)
 
 
-def test_real_mode_without_profile_skills_aborts(settings, repo, tg):
-    real = settings.model_copy(update={"fake_mode": False})
+def test_real_mode_without_profile_skills_aborts(settings, repo, tg, tmp_path):
+    empty = tmp_path / "profile.yaml"
+    empty.write_text("name: Vishal Sharma\nskills: []\n", encoding="utf-8")
+    real = settings.model_copy(update={"fake_mode": False, "profile_path": str(empty)})
     assert run(real, "full", repo=repo, tg=tg) == 2
     assert any("profile.yaml has no skills" in m for m in tg.sent)

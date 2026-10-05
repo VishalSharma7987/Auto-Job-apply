@@ -36,7 +36,7 @@ def _mentions(text: str, term: str) -> bool:
 
 def unverified_claims(body: str, profile: Profile) -> list[str]:
     """Technologies named in `body` that the profile does not list."""
-    known = {_norm(t) for t in profile.verified_terms()}
+    known = {_norm(t) for t in profile.verified_terms()} | set(profile.verified_terms())
     bad = []
     for term in POLICED_TECH:
         if _mentions(body, term) and _norm(term) not in known:
@@ -61,6 +61,8 @@ def template_email(job: Job, profile: Profile, links: dict[str, str]) -> EmailDr
     for p in profile.projects[:2]:
         tech = f" ({', '.join(p.tech[:4])})" if p.tech else ""
         lines.append(f"- {p.name}{tech}: {p.description}".strip())
+    if not profile.projects and profile.project_areas:
+        lines.append(f"My hands-on work covers {', '.join(profile.project_areas[:4])}.")
     if profile.skills:
         lines.append(f"My core skills include {', '.join(profile.skills[:6])}.")
     lines += ["", "My resume is attached" + (" and my work is linked below." if links else "."), ]

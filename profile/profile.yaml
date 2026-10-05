@@ -1,28 +1,67 @@
 # Verified candidate profile - the ONLY source of claims the agent may make (emails, forms, matching).
+# Everything below comes from section 2 of docs/AI_Job_Application_Agent_Project_Requirements-1.docx.
 # Phone / email / LinkedIn / GitHub / portfolio come from ENV (CANDIDATE_PHONE, GMAIL_ADDRESS, LINKEDIN_URL,
-# GITHUB_URL, PORTFOLIO_URL) - never put them here.
+# CANDIDATE_GITHUB_URL, PORTFOLIO_URL) - never put them here.
 #
-# !! ACTION REQUIRED !!  The requirements .docx (section 2) was not available when this repo was generated,
-# so skills / projects / education below are EMPTY ON PURPOSE - nothing is invented.
-# Copy the verified data from section 2 of your requirements doc. Until `skills` is filled, a real run
-# aborts with a Telegram message (FAKE_MODE uses profile.sample.yaml instead).
+# The doc lists skills and project *areas* but no specific named projects, employers or education.
+# Those fields stay empty on purpose (nothing is invented). Add them below when you want the agent to be able
+# to mention them - only true facts.
 name: Vishal Sharma
-headline: ""            # e.g. one honest line: "Fresher AI developer building RAG and agent apps"
-experience_years: 0
-current_location: ""    # e.g. "Pune, India"
+headline: ""            # optional: one honest line about yourself; empty = not used
+experience_level: "0-1 year (junior / entry-level / early-career)"
+current_location: ""    # optional, e.g. "Pune, India" (used for the 'current location' form field)
 target_roles:
   - AI Developer
   - AI/ML Developer
   - AI Engineer
-  - Agentic AI Developer
   - Full Stack AI Developer
+  - Agentic AI Developer
   - Full Stack Developer
 preferred_locations: [Remote, Pune, Bangalore, Hyderabad]
+daily_target: "10-20 quality applications per day"
 
-skills: []              # TODO: list ONLY skills you really have, e.g. [Python, FastAPI, LangChain, ...]
-projects: []            # TODO: - name: ...   description: one honest line   tech: [..]   url: ...
-education: []           # TODO
-experience: []          # TODO (internships etc.) - leave empty if none
+skills:
+  - Python
+  - JavaScript
+  - React.js
+  - Next.js
+  - Node.js
+  - Express
+  - REST APIs
+  - RAG
+  - LLMs
+  - AI Agents
+  - LangChain
+  - LlamaIndex
+  - embeddings
+  - vector databases
+  - Pinecone
+  - Voice AI
+  - Twilio
+  - n8n
+  - WhatsApp APIs
+  - Google Calendar API
+  - MCP
+  - Playwright
+  - OpenAI API
+  - OpenRouter
+  - Groq API
+  - Supabase
+  - Git
+  - GitHub
+
+project_areas:
+  - RAG applications
+  - AI agents
+  - voice AI
+  - automation workflows
+  - WhatsApp appointment automation
+  - browser automation
+  - full-stack AI applications
+
+projects: []            # optional named projects: - name: ...  description: ...  tech: [..]  url: ...
+education: []           # optional, e.g. "B.Tech Computer Science (2025)" - only if true
+experience: []          # optional (internships etc.) - leave empty if none
 
 legal_prefs:
   work_authorization_india: true

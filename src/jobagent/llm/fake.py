@@ -9,6 +9,7 @@ from typing import TypeVar
 from pydantic import BaseModel
 
 from jobagent.models import EmailDraft, FormAnswer, MatchResult
+from jobagent.profile import term_variants
 
 T = TypeVar("T", bound=BaseModel)
 
@@ -17,6 +18,8 @@ TECH_VOCAB = [
     "langchain", "langgraph", "llamaindex", "rag", "llm", "openai", "pytorch", "tensorflow", "scikit-learn",
     "docker", "kubernetes", "aws", "gcp", "azure", "sql", "postgresql", "mongodb", "redis", "vector database",
     "pinecone", "faiss", "hugging face", "transformers", "agents", "mcp", "prompt engineering", "git", "rest api",
+    "express", "twilio", "n8n", "whatsapp", "embeddings", "playwright", "llamaindex", "openrouter", "groq",
+    "voice ai", "supabase", "google calendar api",
 ]
 
 
@@ -54,7 +57,9 @@ class FakeLLM:
         prof = _profile_from(user)
         desc = user.split("<<<UNTRUSTED_JOB_DESCRIPTION_START>>>")[-1].lower()
         head = user.lower()
-        skills = [s.lower() for s in prof.get("skills", [])]
+        skills: set[str] = set()
+        for sk in prof.get("skills", []):
+            skills |= term_variants(sk)
         mn, mx = _years(desc)
         required = [t for t in TECH_VOCAB if t in desc]
         matched = [t for t in required if t in skills]
@@ -79,6 +84,8 @@ class FakeLLM:
         subj = re.search(r"Subject must be exactly: (.+)", user)
         projects = prof.get("projects", [])[:2]
         lines = [f"- {p['name']}: {p.get('description', '')}".strip() for p in projects]
+        if not projects and prof.get("project_areas"):
+            lines = [f"My hands-on work covers {', '.join(prof['project_areas'][:4])}."]
         body = (
             f"Hello Hiring Team,\n\nI am applying for this role. I am {prof.get('name', 'the candidate')}, "
             f"{prof.get('headline', '')}.\n" + ("\n".join(lines) + "\n" if lines else "")
