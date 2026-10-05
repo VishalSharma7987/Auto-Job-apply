@@ -2,16 +2,15 @@
 
 Each entry: what was ambiguous or impossible → what was chosen → why.
 
-**D-001 – Requirements .docx missing.** The file referenced by the brief does not exist on disk, so
-`REQUIREMENTS.md` is reconstructed from the brief. The daily report follows the metrics the brief names
-(scanned, qualified, selected, emails sent, browser submitted, waiting, failed, skipped + skip reasons +
-selected-jobs list). If the doc's section 18 differs, edit `telegram/reports.py::format_report` (one function; tests in
-`tests/test_report_format.py`).
+**D-001 - Requirements doc (RESOLVED).** The .docx was missing in the first pass; it is now `docs/AI_Job_Application_Agent_Project_Requirements-1.docx`
+and fully converted into `docs/REQUIREMENTS.md`. The daily report follows its section 18 exactly (`telegram/reports.py`,
+`test_report_format.py`); the audit is in `REQUIREMENTS_AUDIT.md`.
 
-**D-002 – Candidate data is NOT invented.** `profile/profile.yaml` was meant to be filled from the doc's
-section 2, which is unavailable. Rule 6 forbids fabrication, so skills/projects/education are left **empty with TODO
-markers**. A real run with an empty `skills` list aborts and tells you on Telegram. `profile/profile.sample.yaml`
-holds clearly-labelled SAMPLE data used only by `FAKE_MODE` and tests. **You must fill `profile.yaml`.**
+**D-002 - Candidate data (RESOLVED, nothing invented).** `profile/profile.yaml` is filled **only** from section 2 of the doc: name, target
+roles, "0-1 year" experience *level* (kept as text - the doc gives a target range, not a fact, so no numeric `experience_years`),
+skills, project *areas*, preferred locations and the daily target. The doc names no concrete projects, education or employers, so
+`projects`, `education`, `experience` stay empty and email drafts cite the project areas instead. `profile.sample.yaml` is only used by tests.
+Add real project names later if you want them mentioned.
 
 **D-003 – Telegram commands and webhooks.** `getUpdates` returns HTTP 409 while a webhook is active, so the
 "both paths" design needs care: the Cloudflare relay forwards the whole Telegram `update` inside
@@ -23,8 +22,8 @@ can coexist.
 500 MB Supabase DB. Order is normalize → in-batch dedupe → cheap filter → **then** upsert survivors. Rejected-by-rule
 jobs are only counted in `daily_stats` (skipped + skip_reasons). DB-level dedupe is the unique `job_key`.
 
-**D-005 – One route per job.** Email if a HIGH/MEDIUM published recruiting address exists, else browser apply if the
-URL is a supported ATS, else the job becomes `WAITING_USER` with a `manual_apply` task (apply yourself, then `/skip`).
+**D-005 - One route per job.** Email if a HIGH/MEDIUM published recruiting address exists (and that address was not mailed in the last 14 days), else browser apply if the
+URL is a supported ATS, else the job becomes `WAITING_USER` with a `manual_apply` task (apply yourself, then `/skip`) and is counted as *skipped: no suitable application route* (section 18 wording), not as 'waiting for manual action'.
 Schema still allows both routes (`UNIQUE(job_id, route)`).
 
 **D-006 – Cron from a repo variable is impossible.** GitHub does not allow `${{ vars.* }}` inside `on.schedule`. The two
@@ -72,6 +71,31 @@ domains are rejected. The homepage is only visited if the company's website is k
 **D-018 – API attribution.** RemoteOK/Jobicy/Remotive ask for attribution and not to hide the origin link: every job keeps its
 original URL and `source`. Remotive asks for few requests/day (≤ 3 searches × 2 runs/day here).
 
-**D-019 – Not verified live.** `supabase_repo.py` has not been executed against Supabase from this sandbox (the service key was
+**D-019 - Not verified live (updated).** `supabase_repo.py` has not been executed against Supabase from this sandbox (the service key was
 deliberately not exposed to the build session); the **schema** was applied and its constraints/upsert semantics verified through MCP
 SQL. First real run: check `/status`. `worker.js` was not executed (no Node available); it is ~30 lines of standard Fetch API.
+
+**D-020 - Supabase instead of Cloudflare D1** (the doc's section 6 names D1; the brief replaced it). Postgres has a first-class Python client, constraints for
+idempotency (`UNIQUE(job_id, route)`) and an MCP for migrations. The Cloudflare Worker stays as a ~30-line webhook relay only.
+
+**D-021 - Privacy of failure artifacts.** Screenshots of filled forms contain name/phone/email. The workflow therefore never uploads
+`pre_submit/submitted/unconfirmed` shots, keeps artifacts 1 day, and the same images go only to your private Telegram chat. A **private repo**
+is recommended (2,000 free Actions minutes/month is plenty: ~600-900 min/month expected).
+
+**D-022 - Job sources.** Wellfound, Indeed, Internshala, Naukri and LinkedIn are not scraped: their terms/robots/anti-bot measures forbid automated access, and the doc
+(section 9) says not to bypass them. Used instead: official ATS JSON APIs (Greenhouse, Lever, Ashby), public aggregators (Remotive, RemoteOK, Arbeitnow, Jobicy) and a
+robots-aware JSON-LD adapter for any company career page you add to `config/companies.yaml`.
+
+**D-023 - Already-contacted rules (section 5).** (a) Same normalised company+role as any sent/submitted application => `REJECTED / already_contacted`.
+(b) A recruiting address that received an email in the last 14 days is not used again (falls back to the ATS form or `manual_apply`).
+(c) Jobs seen on earlier runs count as `duplicate` in the daily report.
+
+**D-024 - Resume variants (section 5).** Optional `resume_ai.pdf` / `resume_fullstack.pdf` beside `resume.pdf` (git-ignored); AI-flavoured titles use the first,
+pure full-stack titles the second, everything else the default. Only the default is needed.
+
+**D-025 - Repository testing.** `supabase_repo.py` runs in CI against an in-memory PostgREST fake (same unique constraints/defaults as the SQL) via one shared
+contract (`tests/test_repository_contract.py`); the identical contract runs against the real project with `tests/test_supabase_integration.py` when
+`SUPABASE_URL`/`SUPABASE_KEY` are set (opt-in, cleans up after itself).
+
+**D-026 - Git remote.** The remote in the working tree was re-pointed at `.../ai-job-agent.git` (not found / no access); the repository named in the rules is
+`.../Auto-Job-apply.git`, which already contains the earlier commits. Pushing there was blocked by the harness, so pushes are left to you (SETUP.md has the exact commands).

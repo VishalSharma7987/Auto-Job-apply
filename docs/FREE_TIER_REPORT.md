@@ -1,11 +1,12 @@
 # Free-tier report
 
-Everything runs at **$0** for a personal job search. Limits below are the publicly documented free-tier numbers
-at the time of writing (verify before relying on them; vendors change them).
+Everything runs at **$0** for a personal job search. Limits below were re-checked against the vendors' own pages on **2026-10-05**
+(GitHub Actions billing docs: 2,000 min/month for private repos, free standard runners for public repos; OpenRouter limits page: 20 req/min and 50 req/day for `:free` models,
+1,000/day after buying >= 10 credits once; Supabase pricing: 500 MB, 2 active projects, paused after 1 week of inactivity). Vendors change these - re-verify before relying on them.
 
 | Component | Role | Free allowance | This project's expected use | Hits the limit when… | Paid alternative (later) |
 |---|---|---|---|---|---|
-| **GitHub Actions** (public repo) | Hosts the worker | Unlimited minutes on public repos; private repos: 2,000 min/month | ~2 scheduled + a few command runs/day × 3–10 min ≈ 300–900 min/month | Private repo with many `/jobs` commands | GitHub Team minutes (~$0.008/min Linux) |
+| **GitHub Actions** (public repo free; private repo 2,000 min/month - recommended, see D-021) | Hosts the worker | Unlimited minutes on public repos; private repos: 2,000 min/month | ~2 scheduled + a few command runs/day × 3–10 min ≈ 300–900 min/month | Private repo with many `/jobs` commands | GitHub Team minutes (~$0.008/min Linux) |
 | **Supabase Free** | Postgres | 500 MB DB, pauses after 1 week of **no** activity, 2 projects | tens of MB (only cheap-filter survivors are stored) | After many months, or if you raise caps heavily; project **pauses if idle 7 days** (the cron keeps it alive) | Pro $25/month |
 | **Cloudflare Workers Free** | Telegram relay | 100,000 requests/day | < 100/day | Never in practice | Workers Paid $5/month |
 | **OpenRouter free models** | LLM | ~20 requests/minute and ~50 requests/day per account for `:free` models (≈1,000/day after a one-time $10 top-up); models and quotas change often | ≤ 30 matches + ≤ 15 drafts per run, cached by `job_key` | A busy day: you will see `⚠️ Free-tier limit reached`; remaining jobs resume next run | Paid OpenRouter / Groq / any OpenAI-compatible API (change 3 env vars) |
