@@ -1,7 +1,20 @@
-"""Daily report formatter.
+"""Daily report formatter - layout from section 18 of the requirements doc:
 
-NOTE: the original requirements doc (section 18) was not available when this was written; the layout
-below follows the metrics the project brief names (see docs/DECISIONS.md D-001). Adjust here if needed.
+    Daily Job Report
+
+    Jobs scanned: 87
+    Qualified: 26
+    Selected: 18
+
+    Email applications sent: 5
+    Browser applications submitted: 12
+    Waiting for manual action: 1
+    Failed/retry queue: 0
+
+    Skipped: 61
+    Main reasons: experience mismatch, senior role, duplicate, irrelevant technology, or no suitable application route.
+
+    + company, role, application URL and status for the selected opportunities.
 """
 
 from __future__ import annotations
@@ -10,32 +23,65 @@ from datetime import date
 
 from jobagent.pipeline.state import RunSummary
 
+# internal skip codes -> wording used in the report
+REASON_LABELS = {
+    "requires_3plus_years": "experience mismatch",
+    "title_seniority_or_unrelated": "senior role",
+    "title_not_relevant": "irrelevant role",
+    "location_not_allowed": "location mismatch",
+    "ai_rejected": "irrelevant technology",
+    "duplicate": "duplicate",
+    "no_apply_route": "no suitable application route",
+    "already_contacted": "already contacted",
+    "user_skip": "skipped by you",
+}
+
+
+def main_reasons(skip_reasons: dict, top: int = 5) -> str:
+    merged: dict[str, int] = {}
+    for code, n in (skip_reasons or {}).items():
+        label = REASON_LABELS.get(code, code.replace("_", " "))
+        merged[label] = merged.get(label, 0) + int(n)
+    ranked = [k for k, _ in sorted(merged.items(), key=lambda kv: -kv[1])][:top]
+    if not ranked:
+        return "none"
+    return ranked[0] if len(ranked) == 1 else ", ".join(ranked[:-1]) + ", or " + ranked[-1]
+
 
 def format_report(day: date, stats: dict, selected_jobs: list[dict], dry_run: bool,
                   quota_limited: bool = False, quota_detail: str = "", cap: int | None = None) -> str:
+    g = lambda k: int(stats.get(k, 0) or 0)  # noqa: E731
     lines = [
-        f"📊 Daily Job Agent Report — {day.isoformat()}" + ("  [DRY RUN]" if dry_run else ""),
+        "Daily Job Report",
         "",
-        f"Jobs scanned: {stats.get('scanned', 0)}",
-        f"Qualified jobs: {stats.get('qualified', 0)}",
-        f"Selected for application: {stats.get('selected', 0)}" + (f" (cap {cap}/day)" if cap else ""),
-        f"Emails sent: {stats.get('emails_sent', 0)}",
-        f"Browser applications submitted: {stats.get('browser_submitted', 0)}",
-        f"Waiting for you: {stats.get('waiting_user', 0)}",
-        f"Failed: {stats.get('failed', 0)}",
-        f"Skipped: {stats.get('skipped', 0)}",
+        f"Jobs scanned: {g('scanned')}",
+        f"Qualified: {g('qualified')}",
+        f"Selected: {g('selected')}",
+        "",
+        f"Email applications sent: {g('emails_sent')}",
+        f"Browser applications submitted: {g('browser_submitted')}",
+        f"Waiting for manual action: {g('waiting_user')}",
+        f"Failed/retry queue: {g('failed')}",
+        "",
+        f"Skipped: {g('skipped')}",
+        f"Main reasons: {main_reasons(stats.get('skip_reasons') or {})}.",
+        "",
+        "Selected opportunities (company | role | status | application URL):",
     ]
-    reasons = stats.get("skip_reasons") or {}
-    if reasons:
-        lines.append("Skip reasons: " + ", ".join(f"{k}={v}" for k, v in sorted(reasons.items(), key=lambda kv: -kv[1])))
-    if quota_limited:
-        lines += ["", f"⚠️ Free-tier limit reached: {quota_detail}"]
-    lines += ["", "Selected jobs (company | role | status | url):"]
     if selected_jobs:
         for j in selected_jobs:
             lines.append(f"• {j['company']} | {j['title']} | {j['status']} | {j['url']}")
     else:
         lines.append("• none")
+    notes = []
+    if dry_run:
+        notes.append("ℹ️ DRY RUN – nothing was sent or submitted.")
+    if cap:
+        notes.append(f"ℹ️ Daily cap: {cap} applications.")
+    if quota_limited:
+        notes.append(f"⚠️ Free-tier limit reached: {quota_detail}")
+    if notes:
+        lines += [""] + notes
     return "\n".join(lines)
 
 
