@@ -1,0 +1,16 @@
+.mcp.json
+.env
+profile/resume/*.pdf
+artifacts/
+__pycache__/
+.venv/
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+*.sqlite
+*.db
+.env.*
+!.env.example
+profile/resume/resume.pdf
+.claude/
+data/
