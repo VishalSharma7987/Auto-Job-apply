@@ -44,6 +44,7 @@ class TelegramClient:
         self.token = token
         self.chat_id = str(allowed_chat_id) if allowed_chat_id else None
         self._c = client or httpx.Client(timeout=30)
+        self.echo = None  # optional callable(direction, text) used by `telegram --listen` to print the conversation
 
     @property
     def enabled(self) -> bool:
@@ -68,6 +69,8 @@ class TelegramClient:
             log.info("telegram not configured; message not sent: %s", text[:80].replace("\n", " "))
             return 0
         parts = split_message(text)
+        if self.echo:
+            self.echo("out", text)
         for p in parts:
             self._call("sendMessage", json={"chat_id": self.chat_id, "text": p, "disable_web_page_preview": True})
         return len(parts)
@@ -82,9 +85,30 @@ class TelegramClient:
     def send_document(self, data: bytes, filename: str, caption: str = "") -> bool:
         if not self.enabled:
             return False
+        if self.echo:
+            self.echo("out", f"[document {filename}, {len(data) // 1024} KB]")
         self._call("sendDocument", data={"chat_id": self.chat_id, "caption": caption[:1000]},
                    files={"document": (filename, data, "application/pdf")})
         return True
+
+    def poll(self, offset: int | None, timeout: int = 30) -> list[dict]:
+        """Long-poll getUpdates. Unlike get_updates() this RAISES TelegramError (e.g. 409 while a webhook is set)."""
+        params: dict = {"timeout": timeout, "allowed_updates": ["message"]}
+        if offset is not None:
+            params["offset"] = offset
+        return self._call("getUpdates", json=params, timeout=timeout + 15).get("result", [])
+
+    def get_webhook_info(self) -> dict:
+        return self._call("getWebhookInfo").get("result", {}) or {}
+
+    def delete_webhook(self, drop_pending_updates: bool = False) -> None:
+        self._call("deleteWebhook", json={"drop_pending_updates": drop_pending_updates})
+
+    def set_webhook(self, url: str, secret_token: str | None = None, allowed_updates: list[str] | None = None) -> None:
+        body: dict = {"url": url, "allowed_updates": allowed_updates or ["message"]}
+        if secret_token:
+            body["secret_token"] = secret_token
+        self._call("setWebhook", json=body)
 
     def get_file(self, file_id: str) -> bytes:
         """Download a file the user sent (Bot API limit: 20 MB; we enforce 5 MB before calling this)."""

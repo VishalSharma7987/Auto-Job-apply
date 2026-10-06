@@ -16,7 +16,9 @@ from jobagent.utils.dates import today_utc
 log = logging.getLogger(__name__)
 
 COMMANDS = ["start", "help", "jobs", "apply", "status", "report", "pause", "resume", "retry", "approve",
-            "skip", "history", "settings", "killswitch", "setup", "profile", "myresume", "cancel"]
+            "skip", "history", "settings", "killswitch", "setup", "profile", "myresume", "cancel", "set", "done"]
+
+STOP = "__stop__"  # returned in the requested-modes list when /done ends `telegram --listen`
 
 HELP = (
     "🤖 AI Job Agent commands\n"
@@ -35,10 +37,12 @@ HELP = (
     "\n"
     "👤 Onboarding\n"
     "Send me your resume as a PDF (caption 'ai' or 'fullstack' saves a variant)\n"
-    "/setup – enter phone, LinkedIn, GitHub, portfolio, location\n"
+    "/setup – one-message setup: I send a template, you reply with it filled in\n"
+    "/set <field> <value> – change one detail, e.g. /set phone +919876543210\n"
     "/profile – show your saved details\n"
     "/myresume – send back the stored resume PDF\n"
-    "/cancel – abort /setup"
+    "/cancel – abort /setup\n"
+    "/done – end `jobagent telegram --listen` (laptop chat mode)"
 )
 
 
@@ -224,7 +228,20 @@ def _settings(args, repo, settings, store=None) -> CommandResult:
 def _setup(args, repo, settings, store=None) -> CommandResult:
     from jobagent import onboarding
 
-    return CommandResult(onboarding.begin(repo, settings))
+    return CommandResult(onboarding.begin(repo, settings, " ".join(args)))
+
+
+def _set(args, repo, settings, store=None) -> CommandResult:
+    from jobagent import onboarding
+
+    return CommandResult(onboarding.set_field(args, repo, settings))
+
+
+def _done(args, repo, settings, store=None) -> CommandResult:
+    if repo.get_state("listen_active") == "1":
+        return CommandResult("👋 Listen mode ended. Your messages will be handled by the scheduled / relay runs again.",
+                             run_mode=STOP)
+    return CommandResult("Listen mode is not running (/done only ends `python -m jobagent telegram --listen`).")
 
 
 def _cancel(args, repo, settings, store=None) -> CommandResult:
@@ -279,7 +296,7 @@ def _myresume(args, repo, settings, store=None) -> CommandResult:
 
 
 _HANDLERS = {
-    "setup": _setup, "cancel": _cancel, "profile": _profile_cmd, "myresume": _myresume,
+    "setup": _setup, "cancel": _cancel, "set": _set, "done": _done, "profile": _profile_cmd, "myresume": _myresume,
     "start": _start, "help": _help, "jobs": _jobs, "apply": _apply, "status": _status, "report": _report,
     "pause": _pause, "resume": _resume, "retry": _retry, "approve": _approve, "skip": _skip,
     "history": _history, "settings": _settings, "killswitch": _killswitch,

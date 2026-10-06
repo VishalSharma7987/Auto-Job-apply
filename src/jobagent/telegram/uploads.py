@@ -11,13 +11,13 @@ from jobagent.utils.dates import utcnow
 
 log = logging.getLogger(__name__)
 
-ALIASES = {"ai": "ai", "ml": "ai", "aiml": "ai", "ai/ml": "ai", "fullstack": "fullstack", "full-stack": "fullstack",
-           "full stack": "fullstack", "default": "default", "": "default"}
+ALIASES = {"ai": "ai", "ml": "ai", "aiml": "ai", "ai/ml": "ai", "/ai": "ai", "fullstack": "fullstack",
+           "full-stack": "fullstack", "full stack": "fullstack", "/fullstack": "fullstack"}
 
 
-def variant_from_caption(caption: str | None) -> str | None:
-    """'ai' / 'fullstack' -> that variant; empty -> default; anything else -> None (unknown caption)."""
-    return ALIASES.get((caption or "").strip().lower())
+def variant_from_caption(caption: str | None) -> str:
+    """'ai' / 'fullstack' (also /ai, /fullstack) select a variant. Any other caption - empty, '/resume', 'my cv' - is the main resume."""
+    return ALIASES.get((caption or "").strip().lower(), "default")
 
 
 def handle_document(msg: dict, repo: Repository, tg: TelegramClient, store: ResumeStore | None) -> str:
@@ -28,8 +28,6 @@ def handle_document(msg: dict, repo: Repository, tg: TelegramClient, store: Resu
     if store is None:
         return "⚠️ Resume storage is not available right now."
     variant = variant_from_caption(msg.get("caption"))
-    if variant is None:
-        return "⚠️ Unknown caption. Send the PDF with no caption (main resume), or the caption 'ai' or 'fullstack' for a variant."
     size = int(doc.get("file_size") or 0)
     if size > MAX_RESUME_BYTES:
         return f"⚠️ That file is {size // 1024} KB; the limit is {MAX_RESUME_BYTES // 1024 // 1024} MB. Please send a smaller PDF."

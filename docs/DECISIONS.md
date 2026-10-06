@@ -121,3 +121,17 @@ Lookup order at every run: **DB -> env -> missing**. The non-secret facts sync (
 select a variant, any other caption is rejected instead of silently overwriting the main resume. Contents and phone numbers are never logged (the phone is also registered with the log redactor).
 
 **D-032 - Cheaper chat-only runs.** The workflow installs Chromium only for modes that can open a browser (`full`, `apply`, `approve`, `retry`); onboarding replies, `/profile`, `/myresume`, etc. skip it.
+
+**D-033 - Listen mode.** `python -m jobagent telegram --listen` long-polls `getUpdates` (30 s) and goes through the same inbox pipeline as a normal run, so a message is handled identically whether it arrives
+live, via the relay or via cron (and nothing is double-processed: the inbox is idempotent by `update_id`, the offset is `last_update_id + 1`). Pipeline commands (`/jobs`, `/apply`) run in-process. It ends on `/done`, Ctrl+C or `--max-seconds`.
+A webhook makes `getUpdates` fail with 409, so a set webhook is saved (URL + allowed_updates in `telegram_state`, **never the secret**), deleted *without* dropping pending updates, and set again on every exit path
+(`finally`: normal end, Ctrl+C, crash). Telegram never returns a webhook's secret token, so restoring needs `TELEGRAM_WEBHOOK_SECRET` in `.env`; without it listen mode refuses to remove the webhook unless `--force`
+(which restores the URL without a secret and says so). `--restore-webhook` repairs a session that was killed hard. The console masks phone numbers; the Telegram chat itself shows them.
+
+**D-034 - One-message setup.** `/setup` replies with a template (prefilled with values already stored) and waits in `block` mode; the reply (or `/setup phone=... linkedin=... location=New Delhi` / a block pasted after the command)
+is parsed by key (`phone|mobile|linkedin|github|portfolio|website|location|city`, `:` or `=`), validated with the same validators as the step flow and saved at once with a summary. Rules: an unchanged placeholder
+(`+91...`, `https://...`, `City`, `(optional)`) means "not provided"; `skip` clears linkedin/github/portfolio; control words (`skip`, `keep`, `ok`, ...) are never accepted as a phone/city; an invalid line keeps the valid ones
+(accumulated in the state) and asks only for the bad lines; a partial block falls back to the step flow for **only the required fields still missing** (phone, linkedin, github, location, minus what the DB/env already has).
+`/set <field> <value>` updates one field immediately; `/setup steps` is the old full 5-question flow with confirmation.
+
+**D-035 - Resume caption.** Any caption now saves the main resume (`/resume`, "my cv", none); only `ai` / `fullstack` (also `/ai`, `/fullstack`) select a variant. This replaces the stricter rejection from D-031 at the owner's request.

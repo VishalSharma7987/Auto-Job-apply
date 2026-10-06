@@ -49,19 +49,39 @@ Repo → Settings → Secrets and variables → Actions.
 
 **Variables:** `DRY_RUN` (`true` until you are happy), `MAX_APPLICATIONS_PER_DAY` (`15`).
 
-## 3a. Your resume and personal details: do it in Telegram (no base64, no .env editing)
-The bot stores everything in Supabase (private Storage bucket `resumes` + the `profile` table); the worker loads it at every run, so it works with the laptop off.
-Send these messages **to your bot** (from the chat that is `TELEGRAM_ALLOWED_CHAT_ID`):
-1. **Attach your resume PDF** (≤ 5 MB) → `✅ Resume saved (NN KB). Send /setup to update your details.`
-   Optional variants: attach another PDF with the caption `ai` or `fullstack` (used for AI-flavoured / pure full-stack roles).
-2. `/setup` → answer one question at a time: phone (`+919876543210`, a 10-digit Indian number is accepted too) → LinkedIn URL → GitHub URL (prefilled from env if set;
-   `keep` accepts the shown value) → portfolio URL → city. `skip` is allowed for LinkedIn / GitHub / portfolio. Then `yes` to save, `no` to redo, `cancel` any time.
-3. `/profile` shows what is saved (and which values still come from env); `/myresume` sends the stored PDF back (`/myresume ai` for a variant).
+## 3a. First-time setup: your resume and personal details (Telegram, no base64, no .env editing)
+Everything is stored in Supabase (private Storage bucket `resumes` + the `profile` table); the worker loads it at every run, so it works with the laptop off.
 
-*Timing:* every message is processed by the next worker run. **With the Cloudflare relay (section 5) that is ~1 minute**; with cron only it is the next scheduled run (answers sent in a row are
-still applied in order, but you won't see the next question until then). Nothing is ever lost: messages are queued in the `telegram_inbox` table.
+**First time - use listen mode (laptop on, instant replies):**
+```powershell
+.\scripts\setup_chat.ps1          # = python -m jobagent telegram --listen   (bash: ./scripts/setup_chat.sh)
+```
+It answers every message immediately and prints the conversation in the console (phone numbers are masked on screen). Then, in Telegram:
+1. **Send your resume PDF** (<= 5 MB; any caption is fine, `ai` or `fullstack` saves a variant) -> `✅ Resume saved (NN KB). Send /setup to update your details.`
+2. **`/setup`** -> the bot sends a template. Copy it, fill it in and send it back in **one message**:
+   ```
+   phone: +91...
+   linkedin: https://...
+   github: https://...
+   portfolio: (optional)
+   location: City
+   ```
+   Lines you leave as the placeholder count as "not provided". `skip` is allowed for linkedin / github / portfolio. Everything is validated and saved at once and you get a summary.
+   You can also send it on one line: `/setup phone=+919876543210 linkedin=skip github=github.com/you location=Pune`.
+   If you send only part of it, the bot asks **only for the missing fields**, one at a time (`/setup steps` runs all five questions with a confirmation).
+3. `/profile` shows what is saved, `/myresume` sends the stored PDF back, `/cancel` aborts a setup.
+4. Send **`/done`** (or press Ctrl+C) to leave listen mode.
 
-If no resume is stored anywhere (Storage → `RESUME_PDF_B64` → local file) the worker tells you **"⚠️ No resume configured. Send me your PDF."**, still does discovery, matching and drafting, but sends/applies nothing.
+**Later updates (laptop off, via the Cloudflare relay or the next cron run):** send a new PDF, `/setup` again, or change a single field:
+`/set phone +919876543210`, `/set location Pune`, `/set github https://github.com/you`, `/set portfolio skip`.
+
+*Webhook note:* `getUpdates` only works without a webhook. If the Cloudflare relay webhook is set, listen mode removes it for the session and puts it back on exit; Telegram never reveals the
+webhook's secret, so add `TELEGRAM_WEBHOOK_SECRET=<same value as the Worker's>` to `.env` first (or pass `-Force`; then re-run `setWebhook` yourself). If a session was killed hard:
+`python -m jobagent telegram --restore-webhook`.
+
+*Timing without listen mode:* each message is processed at the next worker run - ~1 minute with the relay (section 5), otherwise the next cron run. Nothing is ever lost (messages are queued in `telegram_inbox`).
+
+If no resume is stored anywhere (Storage -> `RESUME_PDF_B64` -> local file) the worker tells you **"⚠️ No resume configured. Send me your PDF."**, still does discovery, matching and drafting, but sends/applies nothing.
 Missing phone/LinkedIn values simply make forms that need them wait for you (`WAITING_USER`).
 
 ## 3b. Push to GitHub and set the repository Variables (manual - `gh` CLI is not installed here)
@@ -98,7 +118,7 @@ Follow `cloudflare/README.md` (5 steps). It also needs `SUPABASE_URL` / `SUPABAS
 | `/pause` `/resume` `/killswitch` | stop/continue; killswitch = hard stop until `/resume` |
 | `/approve <task_id>` `/skip <job_id>` | answer a `WAITING_USER` notification (ids may be the short 8-char prefix) |
 | `/retry` | re-queue failed tasks (never re-sends an already-sent email) |
-| *(send a PDF)* `/setup` `/profile` `/myresume` `/cancel` | onboarding - see 3a (`/resume` still means "resume automation", the PDF command is `/myresume`) |
+| *(send a PDF)* `/setup` `/set <field> <value>` `/profile` `/myresume` `/cancel` `/done` | onboarding - see 3a (`/resume` still means "resume automation", the PDF command is `/myresume`) |
 
 ## Troubleshooting
 - *"profile.yaml has no skills"* → step 0.
@@ -109,8 +129,7 @@ Follow `cloudflare/README.md` (5 steps). It also needs `SUPABASE_URL` / `SUPABAS
 
 ## Manual test order (do these in order; stop at the first problem)
 1. **Local, fake** - `.\scripts\run_local.ps1 -Setup -Fake` -> prints "Daily Job Report", writes drafts to `data/jobagent.sqlite`, sends nothing. Then `pytest -q`.
-2. **Telegram onboarding** - with your real `.env` (Supabase + Telegram keys): send the bot your resume PDF and `/setup` answers, then run
-   `python -m jobagent run --mode telegram` (processes the queued messages and replies). Check `/profile` and `/myresume`.
+2. **Telegram onboarding** - with your real `.env` (Supabase + Telegram keys): `.\scripts\setup_chat.ps1`, then send your resume PDF and `/setup` (section 3a). Check `/profile` and `/myresume`, then `/done`.
    Optional DB/Storage check: `pytest tests/test_supabase_integration.py -v` (env loaded).
 3. **Local, real data, dry run** - `DRY_RUN=true`, `FAKE_MODE=false`, `DB_BACKEND=supabase`, then `.\scripts\run_local.ps1`. The worker pulls the resume + details from Supabase. Read the drafts and reasons.
 4. **GitHub Actions, dry run** - add the 9 secrets + Variables `DRY_RUN=true`, run *agent -> Run workflow -> full*. Confirm the Telegram report and rows in Supabase.

@@ -1,4 +1,5 @@
 """CLI: python -m jobagent run --mode jobs|apply|status|report|full [--job-id ID]
+     python -m jobagent telegram [--listen [--max-seconds N] [--force]] [--restore-webhook]
 
 Order of work in every run: (1) pending Telegram commands (relay payload + getUpdates), (2) the requested mode.
 """
@@ -34,6 +35,11 @@ def _parse(argv: list[str] | None) -> argparse.Namespace:
     r = sub.add_parser("run", help="run the agent")
     r.add_argument("--mode", default="full")
     r.add_argument("--job-id", default=None)
+    t = sub.add_parser("telegram", help="process Telegram messages; --listen = live chat mode for first-time setup")
+    t.add_argument("--listen", action="store_true", help="long-poll and answer immediately until /done or Ctrl+C")
+    t.add_argument("--max-seconds", type=float, default=None, help="stop listening after this many seconds")
+    t.add_argument("--force", action="store_true", help="remove a webhook even though TELEGRAM_WEBHOOK_SECRET is unknown")
+    t.add_argument("--restore-webhook", action="store_true", help="put back a webhook saved by an interrupted --listen")
     return p.parse_args(argv)
 
 
@@ -68,11 +74,19 @@ def run(settings: Settings, mode: str, job_id: str | None = None, tg: TelegramCl
         log.error("unknown mode %r", mode)
         return 2
     for m in requested:
-        if m not in modes and "full" not in modes:
+        if m in PIPELINE_MODES and m not in modes and "full" not in modes:
             modes.append(m)
     if not modes:
         log.info("no pipeline work requested (mode=%s)", mode)
         return 0
+    return execute_modes(settings, repo, tg, store, modes, llm=llm, job_id=job_id)
+
+
+def execute_modes(settings: Settings, repo, tg: TelegramClient, store, modes: list[str], llm=None,
+                  job_id: str | None = None) -> int:
+    """Run pipeline modes (jobs/apply/full). Shared by `run` and by `telegram --listen`."""
+    register_secrets(settings.telegram_bot_token, settings.supabase_key, settings.llm_api_key,
+                     settings.gmail_app_password, settings.candidate_phone)
     if is_paused(repo):
         msg = "⏸ Agent paused/killswitch active - skipping run. Send /resume."
         log.info(msg)
@@ -117,6 +131,29 @@ def run(settings: Settings, mode: str, job_id: str | None = None, tg: TelegramCl
     return code
 
 
+def telegram_command(settings: Settings, args: argparse.Namespace) -> int:
+    from jobagent.listen import ListenError, listen, restore_webhook, stop_webhook  # noqa: F401
+
+    register_secrets(settings.telegram_bot_token, settings.supabase_key, settings.llm_api_key,
+                     settings.gmail_app_password, settings.candidate_phone)
+    repo = make_repo(settings)
+    tg = TelegramClient(settings.telegram_bot_token, settings.telegram_allowed_chat_id)
+    store = make_store(settings, repo)
+    if args.restore_webhook:
+        ok = restore_webhook(settings, repo, tg, print)
+        print("nothing to restore" if not ok and not repo.get_state("saved_webhook") else "")
+        return 0 if ok or not repo.get_state("saved_webhook") else 1
+    if not args.listen:
+        return run(settings, "telegram", repo=repo, tg=tg, store=store)
+    try:
+        listen(settings, repo, tg, store, max_seconds=args.max_seconds, force=args.force,
+               run_modes=lambda modes: execute_modes(settings, repo, tg, store, modes))
+    except ListenError as e:
+        print(f"ERROR: {e}")
+        return 2
+    return 0
+
+
 def _utf8_streams() -> None:
     for stream in (sys.stdout, sys.stderr):
         try:
@@ -130,6 +167,8 @@ def main(argv: list[str] | None = None) -> int:
     args = _parse(argv)
     setup_logging(os.getenv("LOG_LEVEL", "INFO"))
     settings = get_settings()
+    if args.cmd == "telegram":
+        return telegram_command(settings, args)
     return run(settings, args.mode, args.job_id)
 
 

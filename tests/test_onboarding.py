@@ -34,11 +34,6 @@ def pdf_doc(file_id="f1", size=2057, name="CV.pdf", mime="application/pdf") -> d
     return {"file_id": file_id, "file_name": name, "mime_type": mime, "file_size": size}
 
 
-@pytest.fixture
-def store(tmp_path):
-    return LocalResumeStore(tmp_path / "store")
-
-
 # ================================================================ validators
 @pytest.mark.parametrize("raw,expected", [
     ("+919876543210", "+919876543210"), ("+91 98765 43210", "+919876543210"), ("9876543210", "+919876543210"),
@@ -133,7 +128,7 @@ def test_corrupt_state_resets_safely():
 
 # ================================================================ through the Telegram pipeline (stateless steps)
 def test_setup_via_updates_persists_state_between_runs(repo, settings, tg, store):
-    process_updates([msg(1, "/setup")], repo, tg, settings, store)
+    process_updates([msg(1, "/setup steps")], repo, tg, settings, store)
     assert repo.get_profile_row()["onboarding_state"]["step"] == "phone" and "1/5" in tg.sent[-1]
     # every answer arrives in a *separate* worker run (new process = nothing in memory)
     for uid, text in enumerate(["+919876543210", "linkedin.com/in/vishal", "github.com/vishal", "skip", "Pune"], start=2):
@@ -148,7 +143,7 @@ def test_setup_via_updates_persists_state_between_runs(repo, settings, tg, store
 
 def test_whole_conversation_in_one_run_is_processed_in_order(repo, settings, tg, store):
     # relay down / cron only: the user typed everything before the worker woke up. Order must be preserved.
-    batch = [msg(i, t) for i, t in enumerate(["/setup", "+919876543210", "skip", "skip", "skip", "Pune", "yes"], start=1)]
+    batch = [msg(i, t) for i, t in enumerate(["/setup steps", "+919876543210", "skip", "skip", "skip", "Pune", "yes"], start=1)]
     process_updates(list(reversed(batch)), repo, tg, settings, store)  # even delivered out of order
     assert repo.get_profile_row()["phone"] == "+919876543210" and repo.inbox_pending() == []
 
@@ -168,7 +163,7 @@ def test_setup_cancel_command_and_word(repo, settings, tg, store):
 
 
 def test_other_commands_still_work_during_setup(repo, settings, tg, store):
-    process_updates([msg(1, "/setup"), msg(2, "/status"), msg(3, "+919876543210")], repo, tg, settings, store)
+    process_updates([msg(1, "/setup steps"), msg(2, "/status"), msg(3, "+919876543210")], repo, tg, settings, store)
     assert repo.get_profile_row()["onboarding_state"]["step"] == "linkedin"
 
 
@@ -209,11 +204,14 @@ def test_caption_selects_variant(repo, settings, tg, store, caption, variant):
         assert variant in tg.sent[-1]
 
 
-def test_unknown_caption_rejected_without_storing(repo, tg, store):
+def test_any_other_caption_saves_the_main_resume(repo, tg, store):
     tg.files["f1"] = PDF
-    reply = handle_document(msg(1, document=pdf_doc(), caption="my cv")["message"], repo, tg, store)
-    assert "Unknown caption" in reply and store.download("default.pdf") is None
-    assert variant_from_caption("my cv") is None
+    for caption in ("/resume", "my cv", "Resume 2026", ""):
+        store.delete("default.pdf")
+        assert "✅ Resume saved (2 KB)" in handle_document(msg(1, document=pdf_doc(), caption=caption)["message"], repo, tg, store)
+        assert store.download("default.pdf") == PDF
+    assert variant_from_caption("my cv") == "default" and variant_from_caption("/resume") == "default"
+    assert variant_from_caption("/ai") == "ai" and variant_from_caption("/fullstack") == "fullstack"
 
 
 def test_non_pdf_rejected(repo, tg, store):
@@ -264,7 +262,7 @@ def test_upload_never_logs_content_or_phone(repo, settings, tg, store, caplog):
 # ================================================================ /profile and /myresume
 def test_profile_command_shows_saved_details_and_resume(repo, settings, tg, store):
     tg.files["f1"] = PDF
-    process_updates([msg(1, "/setup"), msg(2, "+919876543210"), msg(3, "linkedin.com/in/vishal"), msg(4, "github.com/vishal"),
+    process_updates([msg(1, "/setup steps"), msg(2, "+919876543210"), msg(3, "linkedin.com/in/vishal"), msg(4, "github.com/vishal"),
                      msg(5, "https://vishal.dev"), msg(6, "Pune"), msg(7, "yes"), msg(8, document=pdf_doc()),
                      msg(9, document=pdf_doc(), caption="ai"), msg(10, "/profile")], repo, tg, settings, store)
     out = tg.sent[-1]

@@ -25,7 +25,7 @@ def upd(uid: int, text: str, chat: str = CHAT) -> dict:
 def test_all_required_commands_exist():
     assert set(COMMANDS) == {"start", "help", "jobs", "apply", "status", "report", "pause", "resume", "retry",
                              "approve", "skip", "history", "settings", "killswitch",
-                             "setup", "profile", "myresume", "cancel"}
+                             "setup", "profile", "myresume", "cancel", "set", "done"}
 
 
 def test_parse_command():

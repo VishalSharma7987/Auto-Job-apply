@@ -107,3 +107,10 @@ def make_job(**kw) -> Job:
 @pytest.fixture
 def job_factory():
     return make_job
+
+
+@pytest.fixture
+def store(tmp_path):
+    from jobagent.storage import LocalResumeStore
+
+    return LocalResumeStore(tmp_path / "store")

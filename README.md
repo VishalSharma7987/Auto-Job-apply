@@ -33,6 +33,7 @@ pytest -q && ruff check .
 ## CLI
 `python -m jobagent run --mode jobs|apply|status|report|full [--job-id <id-prefix>]`
 Pending Telegram commands are processed first on every run.
+`python -m jobagent telegram --listen [--max-seconds N] [--force]` - live chat mode for setup (long-polls Telegram, pauses/restores a relay webhook); `telegram --restore-webhook` repairs an interrupted session.
 
 ## Deploy
 1. Push to GitHub, add the secrets/variables listed in [docs/SETUP.md](docs/SETUP.md#3-github-actions-secrets-and-variables).
@@ -43,9 +44,10 @@ Schedule: 09:00 and 18:00 IST (edit the two crons in `.github/workflows/agent.ym
 
 ## Telegram commands
 `/start /help /jobs /apply /status /report /pause /resume /retry /approve <task_id> /skip <job_id> /history /settings /killswitch`
-+ onboarding: **send your resume PDF**, `/setup`, `/profile`, `/myresume`, `/cancel` (only `TELEGRAM_ALLOWED_CHAT_ID` is served).
++ onboarding: **send your resume PDF**, `/setup`, `/set <field> <value>`, `/profile`, `/myresume`, `/cancel`, `/done` (only `TELEGRAM_ALLOWED_CHAT_ID` is served).
 
 ### Resume and personal details live in Telegram + Supabase, not in secrets
+**First-time setup: run `.\scripts\setup_chat.ps1` (listen mode - the bot answers instantly), then in Telegram send your PDF and `/setup`** (it replies with a template; send it back filled in, in one message; `/done` to finish). Later, `/set phone +91...` changes a single field with the laptop off.
 Send the bot your PDF and answer `/setup` once; it is stored in a private Supabase Storage bucket and the `profile` table and loaded at every run (laptop off).
 Required GitHub secrets are now only: `SUPABASE_URL`, `SUPABASE_KEY`, `TELEGRAM_BOT_TOKEN`, `TELEGRAM_ALLOWED_CHAT_ID`, `OPENROUTER_API_KEY`/`LLM_API_KEY`, `LLM_BASE_URL`, `LLM_MODEL`, `GMAIL_ADDRESS`, `GMAIL_APP_PASSWORD`
 (`CANDIDATE_GITHUB_URL`, `CANDIDATE_PHONE`, `LINKEDIN_URL`, `PORTFOLIO_URL`, `RESUME_PDF_B64` are optional fallbacks). Details: [docs/SETUP.md](docs/SETUP.md#3a-your-resume-and-personal-details-do-it-in-telegram-no-base64-no-env-editing).

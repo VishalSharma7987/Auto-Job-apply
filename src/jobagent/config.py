@@ -32,6 +32,8 @@ class Settings(BaseSettings):
     # telegram
     telegram_bot_token: str | None = None
     telegram_allowed_chat_id: str | None = None
+    # Only needed by `telegram --listen` to put a Cloudflare-relay webhook back afterwards (Telegram never reveals it).
+    telegram_webhook_secret: str | None = None
 
     # llm (OpenAI-compatible)
     llm_base_url: str = "https://openrouter.ai/api/v1"
