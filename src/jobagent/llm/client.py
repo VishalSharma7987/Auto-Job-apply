@@ -79,8 +79,9 @@ def call_with_deadline(fn, seconds: float):
 
 
 def _model_gone(status, msg: str) -> bool:
+    """404 (disappeared) or 403 (e.g. "only available on agentic harnesses"): this model will not work this run."""
     low = msg.lower()
-    return status == 404 or "no endpoints found" in low or "is not a valid model" in low
+    return status in (403, 404) or "no endpoints found" in low or "is not a valid model" in low
 
 
 def _is_timeout(e: Exception) -> bool:
@@ -106,7 +107,8 @@ class OpenAICompatClient:
         self.calls = 0
         self.total_seconds = 0.0
         self.fallback_models = [m for m in (fallback_models or []) if m and m != model]
-        self.switched_from: str | None = None  # set when the configured model was unavailable (404)
+        self._chain_len = 1 + len(self.fallback_models)  # a call tries each model at most once before giving up on 429
+        self.switched_from: str | None = None  # set when the configured model was unavailable (403/404) or rate limited
 
     @property
     def provider(self) -> str:
@@ -130,8 +132,16 @@ class OpenAICompatClient:
 
         return call_with_deadline(call, self.timeout)
 
+    def _switch_model(self, why: str, keep: bool) -> None:
+        """Move to the next fallback model. keep=True (429, transient): the old model goes to the back of the list."""
+        old, self.model = self.model, self.fallback_models.pop(0)
+        self.switched_from = self.switched_from or old
+        if keep:
+            self.fallback_models.append(old)
+        log.warning("LLM model %s: %s; using %s", old, why, self.model)
+
     def complete_json(self, system: str, user: str, schema: type[T], temperature: float = 0.0,
-                      max_tokens: int | None = None) -> T:
+                      max_tokens: int | None = None, _hops: int = 0) -> T:
         last_err = ""
         timeouts = 0
         for attempt in range(self.max_retries):
@@ -152,19 +162,22 @@ class OpenAICompatClient:
                     outcome = "timeout"
                     timeouts += 1
                     last_err = f"timeout after {self.timeout:.0f}s"
+                elif _model_gone(status, msg) and self.fallback_models:
+                    outcome = "switched"  # keeps the `finally` below from logging "ok"
+                    self._log(schema, attempt, t0, f"http-{status} model unavailable")
+                    self._switch_model(f"unavailable (HTTP {status})", keep=False)
+                    return self.complete_json(system, user, schema, temperature, max_tokens, _hops)
+                elif status == 429 and self.fallback_models and _hops < self._chain_len - 1:
+                    outcome = "switched"
+                    self._log(schema, attempt, t0, "http-429 rate limited")
+                    self._switch_model("rate limited (HTTP 429)", keep=True)
+                    return self.complete_json(system, user, schema, temperature, max_tokens, _hops + 1)
                 elif status in (402, 429) or "quota" in msg.lower() or "rate limit" in msg.lower():
                     outcome = f"http-{status}"
                     last_err = f"HTTP {status}: {msg}"
                     if status == 402 or attempt == self.max_retries - 1:
                         self._log(schema, attempt, t0, outcome)
                         raise QuotaExceeded(self.provider, last_err) from e
-                elif _model_gone(status, msg) and self.fallback_models:
-                    old, self.model = self.model, self.fallback_models.pop(0)
-                    self.switched_from = self.switched_from or old
-                    self._log(schema, attempt, t0, f"http-{status} model unavailable -> switching to {self.model}")
-                    log.warning("LLM model %s is unavailable (%s); using fallback %s for this run", old, status,
-                                self.model)
-                    return self.complete_json(system, user, schema, temperature, max_tokens)
                 elif status and 400 <= status < 500 and status not in (408, 409):
                     self._log(schema, attempt, t0, f"http-{status}")
                     raise LLMError(f"HTTP {status}: {msg}") from e

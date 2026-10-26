@@ -41,10 +41,10 @@ class Settings(BaseSettings):
     # llm (OpenAI-compatible)
     llm_base_url: str = "https://openrouter.ai/api/v1"
     llm_api_key: str | None = Field(default=None, validation_alias=AliasChoices("LLM_API_KEY", "OPENROUTER_API_KEY"))
-    # fastest free model that returned valid match JSON in the 2026-10-22 benchmark (docs/PERF_NOTES.md)
-    llm_model: str = "minimax/minimax-m3.1-flash:free"
-    # tried in order if the configured model disappears (HTTP 404 / "no endpoints"), which free models often do
-    llm_fallback_models: str = "minimax/minimax-m3.1-flash:free,google/gemma-4-26b-a4b-it:free"
+    # verified 2026-10-26 with scripts/find_free_model.py: passes the real match prompt (4.7-8.8 s); free models come and go
+    llm_model: str = "poolside/laguna-s-2.1:free"
+    # tried in order when a model returns 403 (agentic-only), 404 (gone) or 429 (rate limited), before QuotaExceeded
+    llm_fallback_models: str = "google/gemma-4-26b-a4b-it:free,poolside/laguna-xs-2.1:free"
     llm_max_retries: int = 2  # total attempts per call
     llm_backoff_seconds: float = 2.0
     llm_timeout_seconds: float = 60.0  # hard per-call timeout

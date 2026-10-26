@@ -238,6 +238,73 @@ def test_unavailable_model_falls_back_and_is_reported(settings, repo, profile, t
     assert "dead/model:free unavailable - used good/model:free (update LLM_MODEL)" in report
 
 
+class _HttpErr(Exception):
+    def __init__(self, status_code, msg="err"):
+        super().__init__(msg)
+        self.status_code = status_code
+
+
+class ScriptedModels(SlowOpenAI):
+    """Per-model behaviour: an int raises that HTTP status, a string is returned as the model's JSON reply."""
+
+    def __init__(self, behaviour):
+        super().__init__(0)
+        self.behaviour, self.order = behaviour, []
+
+    def create(self, **kw):
+        self.order.append(kw["model"])
+        b = self.behaviour[kw["model"]]
+        if isinstance(b, int):
+            raise _HttpErr(b, f"{kw['model']} is only available on agentic harnesses" if b == 403 else "x")
+        return _Resp(b)
+
+
+OK_JSON = '{"decision": "REJECTED", "reasons": ["x"]}'
+
+
+def test_fallback_order_403_then_404_then_429_then_success():
+    fake = ScriptedModels({"a:free": 403, "b:free": 404, "c:free": 429, "d:free": OK_JSON})
+    llm = OpenAICompatClient("https://x/v1", "k", "a:free", client=fake, backoff=0, timeout=5,
+                             fallback_models=["b:free", "c:free", "d:free"])
+    assert llm.complete_json("s", "u", MatchResult).decision == "REJECTED"
+    assert fake.order == ["a:free", "b:free", "c:free", "d:free"]  # strictly in the configured order, one try each
+    assert llm.model == "d:free" and llm.switched_from == "a:free"
+    assert "a:free" not in llm.fallback_models and "b:free" not in llm.fallback_models  # 403/404 are dropped for the run
+    assert "c:free" in llm.fallback_models  # 429 is transient: it stays in rotation
+
+
+def test_all_models_rate_limited_raises_quota_only_after_every_model_was_tried():
+    from jobagent.llm.client import QuotaExceeded
+
+    fake = ScriptedModels({"a:free": 429, "b:free": 429, "c:free": 429})
+    llm = OpenAICompatClient("https://x/v1", "k", "a:free", client=fake, backoff=0, timeout=5,
+                             fallback_models=["b:free", "c:free"])
+    with pytest.raises(QuotaExceeded):
+        llm.complete_json("s", "u", MatchResult)
+    assert fake.order[:3] == ["a:free", "b:free", "c:free"]  # every model got a turn before giving up
+    assert len(fake.order) <= 3 + 2  # then at most the normal retry of the last model, never a loop
+
+
+def test_all_models_unavailable_raises_llm_error_not_quota():
+    from jobagent.llm.client import LLMError, QuotaExceeded
+
+    fake = ScriptedModels({"a:free": 403, "b:free": 404})
+    llm = OpenAICompatClient("https://x/v1", "k", "a:free", client=fake, backoff=0, timeout=5, fallback_models=["b:free"])
+    with pytest.raises(LLMError) as ei:
+        llm.complete_json("s", "u", MatchResult)
+    assert not isinstance(ei.value, QuotaExceeded) and fake.order == ["a:free", "b:free"]
+
+
+def test_no_fallbacks_keeps_the_old_429_behaviour():
+    from jobagent.llm.client import QuotaExceeded
+
+    fake = ScriptedModels({"a:free": 429})
+    llm = OpenAICompatClient("https://x/v1", "k", "a:free", client=fake, backoff=0, timeout=5)
+    with pytest.raises(QuotaExceeded):
+        llm.complete_json("s", "u", MatchResult)
+    assert fake.order == ["a:free", "a:free"]  # 2 attempts on the only model
+
+
 class TimeoutLLM:
     calls = 0
 
