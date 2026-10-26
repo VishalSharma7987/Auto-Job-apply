@@ -189,22 +189,23 @@ class Query:
             if self._limit is not None:
                 rows = rows[: self._limit]
             return Resp(copy.deepcopy(rows), total if self._count == "exact" else None)
-        if self._op == "insert":
-            row = self._prepare(self._payload)
-            if self._conflict(row):
-                raise APIError("duplicate key value violates unique constraint", "23505")
-            self.rows.append(row)
-            return Resp([copy.deepcopy(row)])
-        if self._op == "upsert":
-            row = self._prepare(self._payload)
-            hit = self._conflict(row)
-            if hit is not None:
-                if self._upsert_opts["ignore"]:
-                    return Resp([])
-                hit.update({k: v for k, v in copy.deepcopy(self._payload).items()})
-                return Resp([copy.deepcopy(hit)])
-            self.rows.append(row)
-            return Resp([copy.deepcopy(row)])
+        if self._op in ("insert", "upsert"):
+            payloads = self._payload if isinstance(self._payload, list) else [self._payload]
+            out = []
+            for payload in payloads:
+                row = self._prepare(payload)
+                hit = self._conflict(row)
+                if hit is not None:
+                    if self._op == "insert":
+                        raise APIError("duplicate key value violates unique constraint", "23505")
+                    if self._upsert_opts["ignore"]:
+                        continue
+                    hit.update(copy.deepcopy(payload))
+                    out.append(copy.deepcopy(hit))
+                    continue
+                self.rows.append(row)
+                out.append(copy.deepcopy(row))
+            return Resp(out)
         if self._op == "update":
             hit = self._match()
             for r in hit:

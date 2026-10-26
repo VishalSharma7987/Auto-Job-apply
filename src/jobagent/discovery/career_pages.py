@@ -41,6 +41,8 @@ class CareerPagesAdapter(SourceAdapter):
         robots = RobotsChecker(self.http)
         out: list[RawJob] = []
         for p in self.params.get("pages", []):
+            if self.expired():
+                break
             url = p["url"]
             if not robots.allowed(url):
                 log.info("robots.txt disallows %s - skipped", url)

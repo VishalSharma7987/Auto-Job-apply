@@ -282,6 +282,29 @@ class SqliteRepository(Repository):
             d[reason] = d.get(reason, 0) + 1
             self._exec("update daily_stats set skip_reasons=? where day=?", (json.dumps(d), day.isoformat()))
 
+    def bump_stats(self, day: date, counts: dict[str, int]) -> None:
+        counts = {f: int(n) for f, n in counts.items() if n}
+        if not counts:
+            return
+        bad = [f for f in counts if f not in STAT_FIELDS]
+        if bad:
+            raise ValueError(bad)
+        self._ensure_stat(day)
+        sets = ", ".join(f"{f}={f}+?" for f in counts)
+        self._exec(f"update daily_stats set {sets} where day=?", (*counts.values(), day.isoformat()))
+
+    def add_skip_reasons(self, day: date, counts: dict[str, int]) -> None:
+        counts = {r: int(n) for r, n in counts.items() if n}
+        if not counts:
+            return
+        self._ensure_stat(day)
+        with self._lock:
+            r = self._one("select skip_reasons from daily_stats where day=?", (day.isoformat(),))
+            d = (r or {}).get("skip_reasons") or {}
+            for reason, n in counts.items():
+                d[reason] = d.get(reason, 0) + n
+            self._exec("update daily_stats set skip_reasons=? where day=?", (json.dumps(d), day.isoformat()))
+
     def get_stats(self, day: date) -> dict:
         self._ensure_stat(day)
         r = self._one("select * from daily_stats where day=?", (day.isoformat(),)) or {}

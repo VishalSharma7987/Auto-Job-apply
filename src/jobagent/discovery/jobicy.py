@@ -20,6 +20,8 @@ class JobicyAdapter(SourceAdapter):
     def fetch(self) -> list[RawJob]:
         out: list[RawJob] = []
         for tag in self.params.get("tags", ["python"]):
+            if self.expired():
+                break
             try:
                 data = self.http.get_json(API, params={"count": 50, "tag": tag})
             except (httpx.HTTPError, ValueError) as e:

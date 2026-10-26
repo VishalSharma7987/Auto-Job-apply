@@ -34,6 +34,11 @@ def _title_ok(title: str) -> tuple[bool, str]:
     return True, ""
 
 
+def title_ok(title: str) -> tuple[bool, str]:
+    """Title-only part of the filter: cheap enough to run BEFORE normalising/sanitising a job description."""
+    return _title_ok(title or "")
+
+
 def _years_too_high(text: str) -> bool:
     for m in YEARS_RE.finditer(text):
         if int(m.group(1)) <= MAX_MIN_YEARS:

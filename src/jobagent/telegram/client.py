@@ -43,7 +43,7 @@ class TelegramClient:
     def __init__(self, token: str | None, allowed_chat_id: str | None, client: httpx.Client | None = None):
         self.token = token
         self.chat_id = str(allowed_chat_id) if allowed_chat_id else None
-        self._c = client or httpx.Client(timeout=30)
+        self._c = client or httpx.Client(timeout=httpx.Timeout(20.0, connect=10.0))
         self.echo = None  # optional callable(direction, text) used by `telegram --listen` to print the conversation
 
     @property
@@ -91,12 +91,12 @@ class TelegramClient:
                    files={"document": (filename, data, "application/pdf")})
         return True
 
-    def poll(self, offset: int | None, timeout: int = 30) -> list[dict]:
+    def poll(self, offset: int | None, timeout: int = 15) -> list[dict]:
         """Long-poll getUpdates. Unlike get_updates() this RAISES TelegramError (e.g. 409 while a webhook is set)."""
         params: dict = {"timeout": timeout, "allowed_updates": ["message"]}
         if offset is not None:
             params["offset"] = offset
-        return self._call("getUpdates", json=params, timeout=timeout + 15).get("result", [])
+        return self._call("getUpdates", json=params, timeout=timeout + 5).get("result", [])
 
     def get_webhook_info(self) -> dict:
         return self._call("getWebhookInfo").get("result", {}) or {}

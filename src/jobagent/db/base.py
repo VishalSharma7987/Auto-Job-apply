@@ -121,6 +121,28 @@ class Repository(ABC):
     @abstractmethod
     def get_stats(self, day: date) -> dict: ...
 
+    # ---- batch helpers (one round trip instead of one per job; overridden by the real backends)
+    def bump_stats(self, day: date, counts: dict[str, int]) -> None:
+        for f, n in counts.items():
+            if n:
+                self.bump_stat(day, f, n)
+
+    def add_skip_reasons(self, day: date, counts: dict[str, int]) -> None:
+        for reason, n in counts.items():
+            for _ in range(int(n)):
+                self.add_skip_reason(day, reason)
+
+    def get_jobs_by_keys(self, keys: list[str]) -> dict[str, dict]:
+        out: dict[str, dict] = {}
+        for k in keys:
+            row = self.get_job_by_key(k)
+            if row:
+                out[k] = row
+        return out
+
+    def upsert_jobs(self, jobs: list[Job]) -> list[tuple[dict, bool]]:
+        return [self.upsert_job(j) for j in jobs]
+
 
 def make_repo(settings) -> Repository:
     if settings.db_backend == "supabase":

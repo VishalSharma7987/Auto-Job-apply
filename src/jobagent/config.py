@@ -19,7 +19,10 @@ class Settings(BaseSettings):
     dry_run: bool = True
     fake_mode: bool = False
     max_applications_per_day: int = 15
-    max_ai_matches_per_run: int = 30
+    max_ai_matches_per_run: int = 40  # uncached LLM match calls per run
+    max_jobs_per_source: int = 30  # jobs that passed the cheap filter kept per source per run (newest first)
+    run_time_budget_seconds: int = 1200  # stop starting new work after this; the report is still sent
+    source_timeout_seconds: int = 90  # one job source may not take longer than this
     enable_browser_apply: bool = True
     enable_generic_apply: bool = False  # experimental, off by default
 
@@ -38,9 +41,13 @@ class Settings(BaseSettings):
     # llm (OpenAI-compatible)
     llm_base_url: str = "https://openrouter.ai/api/v1"
     llm_api_key: str | None = Field(default=None, validation_alias=AliasChoices("LLM_API_KEY", "OPENROUTER_API_KEY"))
-    llm_model: str = "nvidia/nemotron-3-super-120b-a12b:free"
-    llm_max_retries: int = 3
+    # fastest free model that returned valid match JSON in the 2026-10-22 benchmark (docs/PERF_NOTES.md)
+    llm_model: str = "minimax/minimax-m3.1-flash:free"
+    # tried in order if the configured model disappears (HTTP 404 / "no endpoints"), which free models often do
+    llm_fallback_models: str = "minimax/minimax-m3.1-flash:free,google/gemma-4-26b-a4b-it:free"
+    llm_max_retries: int = 2  # total attempts per call
     llm_backoff_seconds: float = 2.0
+    llm_timeout_seconds: float = 60.0  # hard per-call timeout
 
     # email
     gmail_address: str | None = None

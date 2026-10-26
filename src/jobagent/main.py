@@ -7,10 +7,12 @@ Order of work in every run: (1) pending Telegram commands (relay payload + getUp
 from __future__ import annotations
 
 import argparse
+import faulthandler
 import logging
 import os
 import sys
 
+from jobagent.budget import RunBudget, RunInterrupted, handle_signals, hard_deadline
 from jobagent.config import Settings, get_settings
 from jobagent.db.base import make_repo
 from jobagent.logging_setup import register_secrets, setup_logging
@@ -21,6 +23,7 @@ from jobagent.telegram.client import TelegramClient
 from jobagent.telegram.commands import event_payload_updates, handle_command, is_paused, process_updates
 
 log = logging.getLogger("jobagent")
+HANG_DUMP_SECONDS = 120
 
 PIPELINE_MODES = {"jobs", "apply", "full"}
 INFO_MODES = {"status", "report"}
@@ -35,6 +38,8 @@ def _parse(argv: list[str] | None) -> argparse.Namespace:
     r = sub.add_parser("run", help="run the agent")
     r.add_argument("--mode", default="full")
     r.add_argument("--job-id", default=None)
+    r.add_argument("--debug-hang", action="store_true",
+                   help=f"dump every thread's stack to stderr every {HANG_DUMP_SECONDS}s (finds the blocking call)")
     t = sub.add_parser("telegram", help="process Telegram messages; --listen = live chat mode for first-time setup")
     t.add_argument("--listen", action="store_true", help="long-poll and answer immediately until /done or Ctrl+C")
     t.add_argument("--max-seconds", type=float, default=None, help="stop listening after this many seconds")
@@ -44,7 +49,8 @@ def _parse(argv: list[str] | None) -> argparse.Namespace:
 
 
 def run(settings: Settings, mode: str, job_id: str | None = None, tg: TelegramClient | None = None,
-        repo=None, llm=None, event_path: str | None = None, store=None) -> int:
+        repo=None, llm=None, event_path: str | None = None, store=None, budget: RunBudget | None = None) -> int:
+    budget = budget or RunBudget(settings.run_time_budget_seconds)  # one budget for the whole process
     register_secrets(settings.telegram_bot_token, settings.supabase_key, settings.llm_api_key,
                      settings.gmail_app_password, settings.candidate_phone)
     repo = repo or make_repo(settings)
@@ -79,11 +85,11 @@ def run(settings: Settings, mode: str, job_id: str | None = None, tg: TelegramCl
     if not modes:
         log.info("no pipeline work requested (mode=%s)", mode)
         return 0
-    return execute_modes(settings, repo, tg, store, modes, llm=llm, job_id=job_id)
+    return execute_modes(settings, repo, tg, store, modes, llm=llm, job_id=job_id, budget=budget)
 
 
 def execute_modes(settings: Settings, repo, tg: TelegramClient, store, modes: list[str], llm=None,
-                  job_id: str | None = None) -> int:
+                  job_id: str | None = None, budget: RunBudget | None = None) -> int:
     """Run pipeline modes (jobs/apply/full). Shared by `run` and by `telegram --listen`."""
     register_secrets(settings.telegram_bot_token, settings.supabase_key, settings.llm_api_key,
                      settings.gmail_app_password, settings.candidate_phone)
@@ -115,20 +121,36 @@ def execute_modes(settings: Settings, repo, tg: TelegramClient, store, modes: li
     except Exception as e:  # noqa: BLE001 - never block a run on this
         log.warning("could not store profile: %s", e)
 
+    budget = budget or RunBudget(settings.run_time_budget_seconds)
     code = 0
     for m in modes:
-        ctx = build_ctx(settings, repo, tg, llm, mode=m, profile=profile)
-        ctx.job_id = job_id
-        log.info("run start mode=%s dry_run=%s fake=%s backend=%s", m, ctx.settings.dry_run, settings.fake_mode,
-                 settings.db_backend)
+        ctx = None
         try:
-            run_pipeline(ctx)
+            ctx = build_ctx(settings, repo, tg, llm, mode=m, profile=profile, budget=budget)
+            ctx.job_id = job_id
+            log.info("run start mode=%s dry_run=%s fake=%s backend=%s model=%s budget=%.0fs (%.0fs used)", m,
+                     ctx.settings.dry_run, settings.fake_mode, settings.db_backend, settings.llm_model,
+                     budget.seconds, budget.elapsed())
+            run_pipeline(ctx)  # sends the report itself, in a `finally`
         except Exception as e:  # noqa: BLE001
             log.exception("pipeline crashed")
-            repo.add_event("error", "run_crashed", None, {"mode": m, "error": str(e)[:300]})
-            tg.send_message(f"❌ Run crashed in mode {m}: {type(e).__name__}: {str(e)[:300]}")
+            try:
+                repo.add_event("error", "run_crashed", None, {"mode": m, "error": f"{type(e).__name__}: {str(e)[:300]}"})
+            except Exception:  # noqa: BLE001
+                pass
+            if ctx is None:  # crashed before the pipeline (and its report) could start
+                _safe_send(tg, f"❌ Run crashed before the pipeline started ({m}): {type(e).__name__}: {str(e)[:300]}")
             code = 1
     return code
+
+
+def _safe_send(tg: TelegramClient | None, text: str) -> None:
+    if tg is None:
+        return
+    try:
+        tg.send_message(text)
+    except Exception as e:  # noqa: BLE001
+        log.warning("could not send Telegram message: %s", e)
 
 
 def telegram_command(settings: Settings, args: argparse.Namespace) -> int:
@@ -162,14 +184,38 @@ def _utf8_streams() -> None:
             pass
 
 
+def _enable_hang_dumps() -> None:
+    """Print the stack of every thread to stderr every HANG_DUMP_SECONDS until the process exits."""
+    faulthandler.enable()
+    faulthandler.dump_traceback_later(HANG_DUMP_SECONDS, repeat=True, file=sys.stderr)
+    log.info("hang debugging on: all thread stacks are dumped to stderr every %ds", HANG_DUMP_SECONDS)
+
+
 def main(argv: list[str] | None = None) -> int:
     _utf8_streams()
     args = _parse(argv)
     setup_logging(os.getenv("LOG_LEVEL", "INFO"))
     settings = get_settings()
+    # first line of every run, printed before any network call so a hang can never leave the log empty
+    log.info("run started, mode=%s, budget=%ds", getattr(args, "mode", args.cmd), settings.run_time_budget_seconds)
+    if getattr(args, "debug_hang", False) or os.getenv("DEBUG_HANG") == "1":
+        _enable_hang_dumps()
     if args.cmd == "telegram":
         return telegram_command(settings, args)
-    return run(settings, args.mode, args.job_id)
+    tg = TelegramClient(settings.telegram_bot_token, settings.telegram_allowed_chat_id)
+    budget = RunBudget(settings.run_time_budget_seconds)
+    with handle_signals(), hard_deadline(budget):
+        try:
+            return run(settings, args.mode, args.job_id, tg=tg, budget=budget)
+        except RunInterrupted as e:
+            if not e.reported:  # interrupted before the pipeline could send its partial report
+                _safe_send(tg, f"🛑 Run interrupted ({e.signal_name}) before the pipeline started - nothing was lost; "
+                               "the next run continues.")
+            return 143 if e.signal_name == "SIGTERM" else 130
+        except Exception as e:  # noqa: BLE001 - e.g. DB unreachable: still tell the user, never fail silently
+            log.exception("run failed")
+            _safe_send(tg, f"❌ Run failed: {type(e).__name__}: {str(e)[:300]}")
+            return 1
 
 
 if __name__ == "__main__":

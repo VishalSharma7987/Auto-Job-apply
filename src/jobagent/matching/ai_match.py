@@ -11,6 +11,7 @@ from jobagent.models import Job, MatchResult
 from jobagent.profile import Profile
 
 log = logging.getLogger(__name__)
+MATCH_MAX_TOKENS = 800
 
 
 def cached_match(job_row: dict) -> MatchResult | None:
@@ -29,7 +30,7 @@ def ai_match(job: Job, job_row: dict, profile: Profile, llm: LLM, repo: Reposito
     if hit:
         return hit, False
     system, user = match_prompt(job, profile)
-    res = llm.complete_json(system, user, MatchResult, temperature=0.0)
+    res = llm.complete_json(system, user, MatchResult, temperature=0.0, max_tokens=MATCH_MAX_TOKENS)
     # Never trust matched_skills that are not actually in the verified profile.
     known = profile.verified_terms()
     res.matched_skills = [s for s in res.matched_skills if s.lower() in known]

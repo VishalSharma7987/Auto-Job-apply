@@ -19,7 +19,7 @@ class ScriptedLLM:
         self.bodies = list(bodies)
         self.prompts: list[str] = []
 
-    def complete_json(self, system, user, schema, temperature=0.0):
+    def complete_json(self, system, user, schema, temperature=0.0, max_tokens=None):
         self.prompts.append(user)
         return EmailDraft(subject="x", body=self.bodies.pop(0))
 

@@ -9,13 +9,19 @@ from urllib.parse import urlparse
 import httpx
 
 USER_AGENT = "ai-job-agent/0.1 (+personal job search; respects robots.txt)"
+MAX_TIMEOUT = 20.0  # no single HTTP call may wait longer than this (connect 10 s)
+
+
+def make_timeout(seconds: float) -> httpx.Timeout:
+    s = min(float(seconds), MAX_TIMEOUT)
+    return httpx.Timeout(s, connect=min(10.0, s))
 
 
 class HttpClient:
-    def __init__(self, timeout: float = 15.0, retries: int = 2, min_interval: float = 0.5,
+    def __init__(self, timeout: float = MAX_TIMEOUT, retries: int = 2, min_interval: float = 0.5,
                  headers: dict | None = None, client: httpx.Client | None = None):
         self._client = client or httpx.Client(
-            timeout=timeout, follow_redirects=True, headers={"User-Agent": USER_AGENT, **(headers or {})}
+            timeout=make_timeout(timeout), follow_redirects=True, headers={"User-Agent": USER_AGENT, **(headers or {})}
         )
         self.retries = retries
         self.min_interval = min_interval

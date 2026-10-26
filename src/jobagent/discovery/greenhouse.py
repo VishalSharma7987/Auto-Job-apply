@@ -20,6 +20,8 @@ class GreenhouseAdapter(SourceAdapter):
     def fetch(self) -> list[RawJob]:
         out: list[RawJob] = []
         for b in self.params.get("boards", []):
+            if self.expired():
+                break
             slug = b["slug"]
             try:
                 data = self.http.get_json(API.format(board=slug))

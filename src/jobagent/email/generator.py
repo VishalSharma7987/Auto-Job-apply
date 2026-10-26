@@ -13,6 +13,7 @@ from jobagent.profile import Profile
 
 log = logging.getLogger(__name__)
 MAX_WORDS = 180
+EMAIL_MAX_TOKENS = 400
 
 # Technologies we police. Any of these named in a draft must exist in profile skills / project tech.
 POLICED_TECH = sorted(set(TECH_VOCAB) | {
@@ -83,7 +84,7 @@ def generate_email(job: Job, profile: Profile, llm: LLM) -> tuple[EmailDraft, st
     for attempt in range(2):
         try:
             system, user = email_prompt(job, profile, links, feedback)
-            d = llm.complete_json(system, user, EmailDraft, temperature=0.3)
+            d = llm.complete_json(system, user, EmailDraft, temperature=0.0, max_tokens=EMAIL_MAX_TOKENS)
         except LLMError as e:
             log.warning("email LLM failed: %s", e)
             break

@@ -20,9 +20,13 @@ def _clean(d: dict) -> dict:
 class SupabaseRepository(Repository):
     def __init__(self, url: str, key: str, client: Any = None):
         if client is None:
+            import httpx
             from supabase import create_client
+            from supabase.lib.client_options import SyncClientOptions
 
-            client = create_client(url, key)
+            # default PostgREST timeout is 120 s; never let one DB call stall a run for minutes
+            client = create_client(url, key, options=SyncClientOptions(
+                postgrest_client_timeout=httpx.Timeout(20.0, connect=10.0), storage_client_timeout=20))
         self.c = client
 
     def _t(self, name: str):
@@ -180,6 +184,52 @@ class SupabaseRepository(Repository):
         sr = dict(row.get("skip_reasons") or {})
         sr[reason] = sr.get(reason, 0) + 1
         self._t("daily_stats").update({"skip_reasons": sr}).eq("day", day.isoformat()).execute()
+
+    def bump_stats(self, day: date, counts: dict[str, int]) -> None:
+        counts = {f: int(n) for f, n in counts.items() if n}
+        if not counts:
+            return
+        bad = [f for f in counts if f not in STAT_FIELDS]
+        if bad:
+            raise ValueError(bad)
+        row = self._stat_row(day)
+        self._t("daily_stats").update({f: int(row.get(f) or 0) + n for f, n in counts.items()}).eq(
+            "day", day.isoformat()).execute()
+
+    def add_skip_reasons(self, day: date, counts: dict[str, int]) -> None:
+        counts = {r: int(n) for r, n in counts.items() if n}
+        if not counts:
+            return
+        row = self._stat_row(day)
+        sr = dict(row.get("skip_reasons") or {})
+        for reason, n in counts.items():
+            sr[reason] = sr.get(reason, 0) + n
+        self._t("daily_stats").update({"skip_reasons": sr}).eq("day", day.isoformat()).execute()
+
+    def get_jobs_by_keys(self, keys: list[str]) -> dict[str, dict]:
+        out: dict[str, dict] = {}
+        uniq = list(dict.fromkeys(keys))
+        for i in range(0, len(uniq), 50):  # keep the URL well under PostgREST/proxy limits
+            chunk = uniq[i:i + 50]
+            for row in self._t("jobs").select("*").in_("job_key", chunk).execute().data or []:
+                out[row["job_key"]] = row
+        return out
+
+    def upsert_jobs(self, jobs: list[Job]) -> list[tuple[dict, bool]]:
+        if not jobs:
+            return []
+        known = self.get_jobs_by_keys([j.job_key for j in jobs])
+        fresh = [j for j in jobs if j.job_key not in known]
+        created: dict[str, dict] = {}
+        for i in range(0, len(fresh), 50):
+            rows = [_clean({c: j.model_dump().get(c) for c in _JOB_COLS}) for j in fresh[i:i + 50]]
+            res = self._t("jobs").upsert(rows, on_conflict="job_key", ignore_duplicates=True).execute()
+            for row in res.data or []:
+                created[row["job_key"]] = row
+        missing = [j.job_key for j in fresh if j.job_key not in created]
+        if missing:  # inserted concurrently by someone else: read them back
+            known.update(self.get_jobs_by_keys(missing))
+        return [(created[j.job_key], True) if j.job_key in created else (known[j.job_key], False) for j in jobs]
 
     def get_stats(self, day: date) -> dict:
         row = self._stat_row(day)

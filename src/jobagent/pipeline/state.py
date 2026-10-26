@@ -91,3 +91,20 @@ class RunSummary:
     quota_detail: str = ""
     selected_jobs: list[dict] = field(default_factory=list)
     notes: list[str] = field(default_factory=list)
+    partial: bool = False  # time budget reached: some work was not started
+    interrupted: str = ""  # signal name if the run was interrupted (SIGTERM/SIGINT)
+    error: str = ""  # "ExceptionType: message" if the run crashed
+    duration: float = 0.0
+
+    def flags(self) -> list[str]:
+        out = []
+        if self.partial:
+            out.append("⏱ partial run (time budget reached)")
+        if self.interrupted:
+            out.append(f"🛑 run interrupted ({self.interrupted}) - partial results")
+        if self.error:
+            out.append(f"❌ run crashed: {self.error}")
+        out += [f"ℹ️ {n}" for n in dict.fromkeys(self.notes)]
+        if self.duration:
+            out.append(f"⏲ run time: {self.duration:.0f}s")
+        return out

@@ -20,6 +20,8 @@ class RemotiveAdapter(SourceAdapter):
     def fetch(self) -> list[RawJob]:
         out: list[RawJob] = []
         for q in self.params.get("searches", ["ai engineer"]):
+            if self.expired():
+                break
             try:
                 data = self.http.get_json(API, params={"search": q, "limit": 50})
             except (httpx.HTTPError, ValueError) as e:

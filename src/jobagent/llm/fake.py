@@ -43,7 +43,8 @@ class FakeLLM:
     def __init__(self) -> None:
         self.calls = 0
 
-    def complete_json(self, system: str, user: str, schema: type[T], temperature: float = 0.0) -> T:
+    def complete_json(self, system: str, user: str, schema: type[T], temperature: float = 0.0,
+                      max_tokens: int | None = None) -> T:
         self.calls += 1
         if schema is MatchResult:
             return self._match(user)  # type: ignore[return-value]

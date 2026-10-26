@@ -63,9 +63,9 @@ def test_prompt_injection_text_never_reaches_llm_or_email(settings, repo, profil
     seen: list[str] = []
     real = ctx.llm.complete_json
 
-    def spy(system, user, schema, temperature=0.0):
+    def spy(system, user, schema, temperature=0.0, max_tokens=None):
         seen.append(user)
-        return real(system, user, schema, temperature)
+        return real(system, user, schema, temperature, max_tokens)
 
     ctx.llm.complete_json = spy  # type: ignore[method-assign]
     run_pipeline(ctx)

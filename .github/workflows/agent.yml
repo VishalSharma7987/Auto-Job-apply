@@ -25,16 +25,22 @@ concurrency:
 jobs:
   run:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    # our own time budget (RUN_TIME_BUDGET_SECONDS, default 1200 s) fires first and still sends the Telegram report
+    timeout-minutes: 28
     env:
+      PYTHONUNBUFFERED: "1"
       DB_BACKEND: supabase
       DRY_RUN: ${{ vars.DRY_RUN || 'true' }}
       MAX_APPLICATIONS_PER_DAY: ${{ vars.MAX_APPLICATIONS_PER_DAY || '15' }}
+      RUN_TIME_BUDGET_SECONDS: ${{ vars.RUN_TIME_BUDGET_SECONDS || '1200' }}
+      MAX_AI_MATCHES_PER_RUN: ${{ vars.MAX_AI_MATCHES_PER_RUN || '40' }}
+      MAX_JOBS_PER_SOURCE: ${{ vars.MAX_JOBS_PER_SOURCE || '30' }}
       SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
       SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
       TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
       TELEGRAM_ALLOWED_CHAT_ID: ${{ secrets.TELEGRAM_ALLOWED_CHAT_ID }}
-      LLM_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+      # the key may be stored as LLM_API_KEY or OPENROUTER_API_KEY (an empty key made every AI call fail)
+      LLM_API_KEY: ${{ secrets.LLM_API_KEY || secrets.OPENROUTER_API_KEY }}
       LLM_BASE_URL: ${{ secrets.LLM_BASE_URL }}
       LLM_MODEL: ${{ secrets.LLM_MODEL }}
       GMAIL_ADDRESS: ${{ secrets.GMAIL_ADDRESS }}

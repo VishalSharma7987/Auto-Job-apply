@@ -81,7 +81,7 @@ def restore_webhook(settings: Settings, repo: Repository, tg: TelegramClient, ec
 
 
 def listen(settings: Settings, repo: Repository, tg: TelegramClient, store, *, max_seconds: float | None = None,
-           poll_timeout: int = 30, run_modes: Callable[[list[str]], object] | None = None,
+           poll_timeout: int = 15, run_modes: Callable[[list[str]], object] | None = None,
            echo: Callable[[str], None] = print, now: Callable[[], float] = time.monotonic,
            sleep: Callable[[float], None] = time.sleep, force: bool = False) -> str:
     """Returns why it stopped: done | timeout | interrupt | conflict."""

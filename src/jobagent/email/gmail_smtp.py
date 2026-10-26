@@ -48,7 +48,7 @@ class GmailSender:
             with self._smtp_factory() as s:
                 s.send_message(msg)
         else:
-            with smtplib.SMTP_SSL(self.host, self.port, context=ssl.create_default_context(), timeout=30) as s:
+            with smtplib.SMTP_SSL(self.host, self.port, context=ssl.create_default_context(), timeout=20) as s:
                 s.login(self.address, self.password)
                 s.send_message(msg)
         self.sent_count += 1

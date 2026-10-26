@@ -24,7 +24,8 @@ from jobagent.utils.http import HttpClient
 
 log = logging.getLogger(__name__)
 
-MAX_PAGES = 4
+MAX_PAGES = 3  # job page, company homepage, careers page (generic contact pages are never usable)
+PAGE_TIMEOUT = 15.0
 ROLES = (r"careers?|jobs?|hr|hiring|recruit(?:ment|ing|er|ers|ing-team)?|talent(?:[-_.]?acquisition)?|"
          r"humanresources|human[-_.]resources|join(?:us)?|applications?|work(?:with)?us|staffing")
 REGION = r"india|in|global|us|uk|eu|apac|team|pune|bangalore|bengaluru|hyderabad|remote|early[-_.]?careers?|campus"
@@ -96,44 +97,50 @@ def _find_links(html: str, base: str) -> dict[str, str]:
 class ContactFinder:
     def __init__(self, http: HttpClient | None = None, fetcher: Callable[[str], str | None] | None = None,
                  robots: RobotsChecker | None = None):
-        self.http = http or HttpClient()
+        self.http = http or HttpClient(timeout=PAGE_TIMEOUT, retries=0, min_interval=0.3)
         self.robots = robots or RobotsChecker(self.http)
         self._fetch = fetcher or self.http.get_text
+        self._site_cache: dict[str, Contact | None] = {}  # company website -> result, so one company = <= 3 pages
+        self.pages_fetched = 0
 
     def _get(self, url: str) -> str | None:
         if not self.robots.allowed(url):
             log.info("robots.txt blocks %s", url)
             return None
+        self.pages_fetched += 1
         return self._fetch(url)
 
+    def _scan(self, url: str, job: Job) -> tuple[str | None, Contact | None]:
+        html = self._get(url)
+        if not html:
+            return None, None
+        conf = _confidence(_page_kind(url, job.url))
+        if conf not in ("HIGH", "MEDIUM"):
+            return html, None
+        emails = extract_recruiting_emails(html)
+        if not emails:
+            return html, None
+        return html, Contact(company=job.company, email=emails[0], source_url=url, confidence=conf)  # type: ignore[arg-type]
+
+    def _scan_site(self, site: str, job: Job) -> Contact | None:
+        home, _ = self._scan(site, job)  # the homepage itself is LOW confidence: only used to find the careers link
+        if not home:
+            return None
+        careers = _find_links(home, site).get("careers")
+        if not careers or careers == site:
+            return None
+        return self._scan(careers, job)[1]
+
     def find(self, job: Job) -> Contact | None:
-        """Best usable (HIGH/MEDIUM) published recruiting contact for the job, or None."""
-        best: Contact | None = None
-        visited: list[str] = []
-
-        def visit(url: str) -> str | None:
-            nonlocal best
-            if url in visited or len(visited) >= MAX_PAGES:
-                return None
-            visited.append(url)
-            html = self._get(url)
-            if not html:
-                return None
-            conf = _confidence(_page_kind(url, job.url))
-            for email in extract_recruiting_emails(html):
-                if conf in ("HIGH", "MEDIUM") and (best is None or (conf == "HIGH" and best.confidence != "HIGH")):
-                    best = Contact(company=job.company, email=email, source_url=url, confidence=conf)  # type: ignore[arg-type]
-            return html
-
-        visit(job.url)
+        """Best usable (HIGH/MEDIUM) published recruiting contact for the job, or None. At most MAX_PAGES pages."""
+        _, best = self._scan(job.url, job)
         if best and best.confidence == "HIGH":
             return best
         site = job.company_website
         if site and not any(h in urlparse(site).netloc for h in ATS_HOSTS):
-            home = visit(site)
-            if home and not best:
-                for url in _find_links(home, site).values():
-                    visit(url)
-                    if best:
-                        break
+            if site not in self._site_cache:
+                self._site_cache[site] = self._scan_site(site, job)
+            hit = self._site_cache[site]
+            if hit and best is None:
+                best = hit.model_copy(update={"company": job.company})
         return best

@@ -35,6 +35,14 @@ class _RedactFilter(logging.Filter):
         return True
 
 
+class _FlushingHandler(logging.StreamHandler):
+    """Flush after every record so CI logs stream live (with PYTHONUNBUFFERED=1 in the workflow)."""
+
+    def emit(self, record: logging.LogRecord) -> None:
+        super().emit(record)
+        self.flush()
+
+
 class _JsonFormatter(logging.Formatter):
     def format(self, record: logging.LogRecord) -> str:
         return json.dumps({"ts": self.formatTime(record, "%Y-%m-%dT%H:%M:%S"), "level": record.levelname,
@@ -45,8 +53,12 @@ def setup_logging(level: str = "INFO", json_logs: bool | None = None) -> None:
     import os
 
     if json_logs is None:
-        json_logs = os.getenv("GITHUB_ACTIONS") == "true" or os.getenv("LOG_JSON") == "1"
-    h = logging.StreamHandler(sys.stdout)
+        json_logs = os.getenv("LOG_JSON") == "1"
+    try:
+        sys.stdout.reconfigure(line_buffering=True)  # type: ignore[union-attr]
+    except (AttributeError, ValueError):
+        pass
+    h = _FlushingHandler(sys.stdout)
     h.addFilter(_RedactFilter())
     h.setFormatter(_JsonFormatter() if json_logs else logging.Formatter("%(asctime)s %(levelname)-7s %(name)s: %(message)s", "%H:%M:%S"))
     root = logging.getLogger()

@@ -154,7 +154,7 @@ def decide(f: FieldSpec, profile: Profile, cover_letter: str, llm: LLM | None,
         return Decision("ask_user", reason=f"required question, no LLM: {label[:100]}")
     system, user = form_prompt(label, f.options or None, profile)
     try:
-        ans = llm.complete_json(system, user, FormAnswer, temperature=0.0)
+        ans = llm.complete_json(system, user, FormAnswer, temperature=0.0, max_tokens=200)
     except Exception as e:  # noqa: BLE001 - includes QuotaExceeded handled upstream? re-raise quota only
         from jobagent.llm.client import QuotaExceeded
 

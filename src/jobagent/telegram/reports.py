@@ -34,6 +34,7 @@ REASON_LABELS = {
     "no_apply_route": "no suitable application route",
     "already_contacted": "already contacted",
     "user_skip": "skipped by you",
+    "source_cap": "per-source limit",
 }
 
 
@@ -49,7 +50,8 @@ def main_reasons(skip_reasons: dict, top: int = 5) -> str:
 
 
 def format_report(day: date, stats: dict, selected_jobs: list[dict], dry_run: bool,
-                  quota_limited: bool = False, quota_detail: str = "", cap: int | None = None) -> str:
+                  quota_limited: bool = False, quota_detail: str = "", cap: int | None = None,
+                  flags: list[str] | None = None) -> str:
     g = lambda k: int(stats.get(k, 0) or 0)  # noqa: E731
     lines = [
         "Daily Job Report",
@@ -73,7 +75,7 @@ def format_report(day: date, stats: dict, selected_jobs: list[dict], dry_run: bo
             lines.append(f"• {j['company']} | {j['title']} | {j['status']} | {j['url']}")
     else:
         lines.append("• none")
-    notes = []
+    notes = list(flags or [])
     if dry_run:
         notes.append("ℹ️ DRY RUN – nothing was sent or submitted.")
     if cap:
@@ -101,4 +103,4 @@ def todays_selected(repo) -> list[dict]:
 
 
 def format_summary(s: RunSummary, day: date, stats: dict, dry_run: bool, cap: int | None = None) -> str:
-    return format_report(day, stats, s.selected_jobs, dry_run, s.quota_limited, s.quota_detail, cap)
+    return format_report(day, stats, s.selected_jobs, dry_run, s.quota_limited, s.quota_detail, cap, s.flags())
